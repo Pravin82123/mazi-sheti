@@ -1,0 +1,3251 @@
+﻿<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>माझी शेती - प्रगत डायरी (प्रो)</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="माझी शेती">
+    <link rel="icon" type="image/png" href="./icon-192x192.png">
+    <link rel="apple-touch-icon" href="./icon-192x192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Marathi:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.1.1/compressor.min.js"></script>
+    <!-- Tesseract.js for OCR (Receipt Amount Recognition) -->
+    <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+    <!-- Cropper.js for Image Cropping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script>
+        (function(){
+            function loadScript(src){
+                var s = document.createElement('script'); s.src = src; s.defer = false; document.head.appendChild(s);
+            }
+            function loadCSS(href){
+                var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l);
+            }
+
+            // If CDN libs fail (first-time offline), load local fallbacks from ./libs/
+            var fallbacks = [
+                {test: function(){ return window.Swal; }, local: './libs/sweetalert2.min.js'},
+                {test: function(){ return window.Chart; }, local: './libs/chart.min.js'},
+                {test: function(){ return window.jspdf; }, local: './libs/jspdf.umd.min.js'},
+                {test: function(){ return window.html2canvas; }, local: './libs/html2canvas.min.js'},
+                {test: function(){ return window.Compressor; }, local: './libs/compressor.min.js'},
+                {test: function(){ return window.idb; }, local: './libs/idb.umd.js'}
+            ];
+
+            fallbacks.forEach(function(f){
+                try{ if(!f.test()) { loadScript(f.local); console.warn('Loading local fallback:', f.local); } }catch(e){ loadScript(f.local); }
+            });
+
+            // Font fallback: check if Marathi font is available, otherwise load local CSS
+            try{
+                if (document.fonts && !document.fonts.check('1em "Noto Sans Marathi"')) {
+                    loadCSS('./libs/noto-sans-marathi.css');
+                }
+            }catch(e){ /* ignore */ }
+
+            // FontAwesome CSS fallback (if CDN CSS not present)
+            if (!Array.from(document.styleSheets).some(s => s.href && s.href.includes('font-awesome'))){
+                loadCSS('./libs/fontawesome.min.css');
+            }
+        })();
+    </script>
+
+    <style>
+        body { font-family: 'Noto Sans Marathi', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .card { 
+            background: #ffffff; 
+            border-radius: 1rem; 
+            box-shadow: 0 4px 15px -3px rgb(0 0 0 / 0.05); 
+            padding: 1.5rem; 
+            border: 1px solid #e2e8f0; 
+            transition: all 0.3s ease;
+        }
+        .card:hover { box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1); transform: translateY(-2px); }
+        .input-field { 
+            border: 1.5px solid #cbd5e1; 
+            padding: 0.6rem 0.8rem; 
+            border-radius: 0.5rem; 
+            width: 100%; 
+            outline: none; 
+            transition: 0.2s; 
+            font-size: 14px; 
+            background-color: #fdfdfd;
+        }
+        .input-field:focus { border-color: #059669; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); background-color: #ffffff; }
+        .dark-input:focus { border-color: #34d399; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.15); }
+        
+        /* Custom Scrollbar for tables */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @media print { 
+            body { background: white; }
+            .card { box-shadow: none; border: 1px solid #ddd; transform: none !important; }
+            .no-print { display: none !important; } 
+        }
+        
+        /* Loading Spinner Styles */
+        #loadingSpinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(2px);
+        }
+        
+        #loadingSpinner.hidden {
+            display: none;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #e2e8f0;
+            border-top: 5px solid #059669;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spinner-text {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #059669;
+            text-align: center;
+        }
+        
+        .spinner-subtext {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        /* Cropper.js Custom Styles */
+        .cropper-container {
+            max-height: 400px;
+        }
+
+        .cropper-crop-box,
+        .cropper-modal {
+            opacity: 0.5;
+        }
+
+        .cropper-center-indicator,
+        .cropper-face,
+        .cropper-line,
+        .cropper-point {
+            background-color: #06b6d4;
+        }
+
+        .cropper-bg {
+            background-image: none;
+        }
+
+        .cropper-point {
+            width: 8px;
+            height: 8px;
+            background-color: #0891b2;
+            box-shadow: 0 0 4px #06b6d4;
+        }
+
+        .cropper-line {
+            background-color: rgba(6, 182, 212, 0.6);
+        }
+    </style>
+</head>
+<body class="p-2 md:p-6 lg:p-10">
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="hidden">
+        <div class="spinner"></div>
+        <div class="spinner-text">डेटा लोड होत आहे...</div>
+        <div class="spinner-subtext">कृपया प्रतीक्षा करा...</div>
+    </div>
+
+    <!-- Backup Reminder Notification -->
+    <div id="backupReminder" class="hidden fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg shadow-lg p-4 z-50 animate-pulse">
+        <div class="flex items-start gap-3">
+            <i class="fa-solid fa-cloud-arrow-up text-yellow-600 text-xl mt-1 flex-shrink-0"></i>
+            <div class="flex-1">
+                <h3 class="font-bold text-yellow-800 text-sm">सिंक होणे बाकी आहे</h3>
+                <p class="text-yellow-700 text-xs mt-1"><span id="pendingRecordsCount">0</span> रेकॉर्ड्स ऑफलाइन सेव झाले आहेत. इंटरनेट जोडल्यावर ते स्वयंचलित सिंक होतील.</p>
+            </div>
+            <button type="button" id="backupReminderClose" class="text-yellow-600 hover:text-yellow-800 flex-shrink-0 mt-1">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <header class="bg-gradient-to-r from-emerald-900 to-emerald-700 text-white p-6 rounded-2xl shadow-xl mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <h1 class="text-2xl lg:text-3xl font-black flex items-center justify-center md:justify-start tracking-wide">
+                    <img id="logoImg" src="./image_0.png" alt="माझी शेती लोगो" class="w-12 h-12 md:w-10 md:h-10 mr-3 rounded-lg border border-emerald-400 shadow-sm object-cover flex-shrink-0" loading="eager" aria-hidden="false">
+                    माझी शेती डायरी 
+                    <span class="ml-2 text-xs bg-amber-500 text-white px-2 py-1 rounded-md uppercase tracking-wider font-bold">Pro</span>
+                </h1>
+                <p class="text-emerald-100 opacity-90 text-sm mt-1">प्रगत हिशोब आणि यंत्र व्यवस्थापन प्रणाली</p>
+            </div>
+            <div class="flex flex-col items-center md:items-end gap-3 w-full md:w-auto">
+                <div id="networkStatus" class="bg-black/20 px-4 py-2 rounded-xl font-mono text-sm border border-emerald-600/50 shadow-inner w-full md:w-auto text-center">
+                    <span class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full font-bold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> तपासत आहे...</span>
+                </div>
+                <button id="installBtn" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-opacity shadow-md no-print">
+                    <i class="fa-solid fa-download mr-1"></i> अॅप इन्स्टॉल करा
+                </button>
+                <div id="clockDisplay" class="bg-black/20 px-4 py-2 rounded-xl font-mono text-sm border border-emerald-600/50 shadow-inner w-full md:w-auto text-center">लोड होत आहे...</div>
+                <div class="flex gap-2 w-full md:w-auto justify-center">
+                    <button type="button" id="exportCsvBtn" class="no-print flex-1 md:flex-none text-xs bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition-all shadow-md font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-csv"></i> CSV डाउनलोड
+                    </button>
+                    <button type="button" id="exportPdfBtn" class="no-print flex-1 md:flex-none text-xs bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg transition-all shadow-md font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> PDF रिपोर्ट
+                    </button>
+                    <button type="button" id="printBtn" class="no-print flex-1 md:flex-none text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-all border border-white/20 font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-print"></i> रिपोर्ट प्रिंट
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 space-y-6 no-print">
+                
+                <form class="card border-t-4 border-emerald-600 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-5"><i class="fa-solid fa-seedling text-8xl"></i></div>
+                    <h2 class="text-lg font-bold text-emerald-900 mb-4 flex items-center"><i class="fa-solid fa-map-location-dot mr-2 text-emerald-600"></i> १. मूलभूत माहिती</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                        <div>
+                            <label for="farmName" class="text-xs font-bold text-slate-700">शेतकरी / शेताचे नाव</label>
+                            <input type="text" id="farmName" list="farmSuggestions" class="input-field mt-1" placeholder="शेतकरी / शेताचे नाव" required>
+                            <datalist id="farmSuggestions"></datalist>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="cropName" list="cropSuggestions" class="input-field flex-1" placeholder="पिकाचे नाव (वैकल्पिक)">
+                            <datalist id="cropSuggestions"></datalist>
+                            <button type="button" id="setCropNAButton" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-bold transition-colors" title="लागू नाही निवडा">
+                                <i class="fa-solid fa-ban"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+
+
+                <!-- Photo Capture Card -->
+                <div class="card border-t-4 border-pink-500 bg-gradient-to-r from-pink-50 to-rose-50">
+                    <h3 class="font-bold text-pink-900 mb-4 flex items-center"><i class="fa-solid fa-camera mr-2 text-pink-600"></i> शेतातील फोटो / स्क्रीनशॉट</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-3 mb-4">
+                        <button type="button" id="galleryButton" class="bg-indigo-600 text-white py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-image"></i> गॅलरी
+                        </button>
+                    </div>
+                    <input type="file" id="photoUpload" accept="image/*" class="hidden">
+                    <canvas id="photoCanvas" class="hidden"></canvas>
+                    <div id="photoPreview" class="mt-3"></div>
+                </div>
+
+                <!-- OCR Receipt Scanner Card -->
+                <div class="card border-t-4 border-cyan-500 bg-gradient-to-r from-cyan-50 to-blue-50 no-print">
+                    <h3 class="font-bold text-cyan-900 mb-4 flex items-center"><i class="fa-solid fa-receipt text-cyan-600 mr-2"></i> पावती/बिल स्कॅन (OCR)</h3>
+                    <p class="text-xs text-cyan-700 mb-4"><i class="fa-solid fa-lightbulb mr-1"></i> खते, औषधे किंवा बियाण्याच्या पावतीचा फोटो काढा. रक्कम आपोआप वाचली जाईल.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <button type="button" id="ocrScanButton" class="bg-cyan-600 text-white py-2.5 rounded-lg font-bold hover:bg-cyan-700 transition-all shadow-md shadow-cyan-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-barcode"></i> पावती स्कॅन करा
+                        </button>
+                        <button type="button" id="ocrCameraButton" class="bg-teal-600 text-white py-2.5 rounded-lg font-bold hover:bg-teal-700 transition-all shadow-md shadow-teal-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera"></i> कॅमेरा वापरा
+                        </button>
+                    </div>
+
+                    <input type="file" id="ocrReceiptUpload" accept="image/*" class="hidden">
+                    <div id="ocrPreview" class="mt-3 hidden">
+                        <div class="bg-white p-3 rounded-lg border border-cyan-200">
+                            <p class="text-xs font-bold text-cyan-700 mb-2">✂️ आवश्यक भाग क्रॉप करा (ड्रॅग करून निवडा):</p>
+                            <div id="cropperContainer" style="max-height: 400px; overflow: hidden; border: 2px solid #06b6d4; border-radius: 8px;">
+                                <img id="ocrImage" src="" alt="OCR Preview" style="max-width: 100%; display: block;">
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-3">
+                                <button type="button" id="ocrRotateBtn" class="bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-rotate-right"></i> फिरवा
+                                </button>
+                                <button type="button" id="ocrResetCropBtn" class="bg-slate-400 hover:bg-slate-500 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-redo"></i> रीसेट
+                                </button>
+                                <button type="button" id="ocrCropConfirmBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-check"></i> क्रॉप करा
+                                </button>
+                            </div>
+                            <button type="button" id="ocrSkipCropBtn" class="w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-lg text-xs font-bold transition-colors">
+                                <i class="fa-solid fa-forward"></i> संपूर्ण फोटो वापरा
+                            </button>
+                            <p class="text-[10px] text-gray-500 mt-2 text-center">💡 पावतीचा भाग निवडा. शिरोबिंदूंना ड्रॅग करून आकार बदलू शकता.</p>
+                        </div>
+                    </div>
+
+                    <div id="ocrProcessing" class="hidden mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                        <div class="flex items-center mb-3">
+                            <div class="w-5 h-5 rounded-full border-2 border-cyan-600 border-t-cyan-200 animate-spin mr-3"></div>
+                            <span class="font-bold text-cyan-900">OCR प्रक्रिया चलू आहे...</span>
+                        </div>
+                        <div class="w-full bg-cyan-100 rounded-full h-2 overflow-hidden">
+                            <div id="ocrProgress" class="bg-cyan-600 h-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <p id="ocrStatus" class="text-xs text-cyan-700 mt-2 text-center">तैयारी...</p>
+                    </div>
+
+                    <div id="ocrResults" class="hidden mt-4 space-y-3">
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-xs font-bold text-emerald-700 mb-2">📋 ओळखलेला मजकूर:</p>
+                            <div id="ocrText" class="text-sm bg-white p-2 rounded border border-emerald-100 max-h-32 overflow-y-auto text-gray-700" style="font-family: monospace;"></div>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p class="text-xs font-bold text-blue-700 mb-2">💰 सापडलेली रक्कम (₹):</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <div class="space-y-1.5" id="ocrAmounts"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <p class="text-xs font-bold text-purple-700 mb-2">🔧 कोणत्या क्षेत्रात भरायचे?</p>
+                            <select id="ocrFieldSelect" class="input-field text-sm mb-2">
+                                <option value="">-- निवडा --</option>
+                                <option value="seed">बियाणे</option>
+                                <option value="fert">खते</option>
+                                <option value="med">औषधे</option>
+                                <option value="labour">मजुरी दर</option>
+                                <option value="work">यंत्र दर</option>
+                                <option value="manual">हाताने टाइप करा</option>
+                            </select>
+                            <button type="button" id="ocrAutoFillBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg text-sm font-bold transition-colors shadow-sm">
+                                <i class="fa-solid fa-check-double mr-1"></i> निवडलेल्या क्षेत्रात भरा
+                            </button>
+                        </div>
+
+                        <button type="button" id="ocrClearBtn" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg text-sm font-bold transition-colors">
+                            <i class="fa-solid fa-xmark mr-1"></i> परिणाम क्लिअर करा
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form class="card border-t-4 border-amber-500">
+                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                            <h3 class="font-bold text-amber-800"><i class="fa-solid fa-gears mr-1"></i> २. यंत्र काम (HR)</h3>
+                            <span class="text-sm font-black bg-amber-100 text-amber-700 px-2 py-1 rounded" id="workGrantTotal">₹ 0</span>
+                        </div>
+                        <select id="workType" class="input-field mb-3" required>
+                            <option value="नांगरणी">नांगरणी</option>
+                            <option value="रोटव्हेटर">रोटव्हेटर</option>
+                            <option value="पेरणी">पेरणी</option>
+                            <option value="बळी">बळी</option>
+                            <option value="सऱ्या पाडणे">सऱ्या पाडणे</option>
+                            <option value="फणपाळी">फणपाळी</option>
+                            <option value="इतर">इतर</option>
+                        </select>
+                        <div id="customWorkWrapper" class="hidden mb-3">
+                            <input type="text" id="customWorkType" class="input-field" placeholder="इतर कामाचे नाव लिहा">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">स्टार्ट HR</label>
+                                <input type="number" id="startHR" min="0" step="0.01" inputmode="decimal" class="input-field mt-1" placeholder="0.00" required>
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">एन्ड HR</label>
+                                <input type="number" id="endHR" min="0" step="0.01" inputmode="decimal" class="input-field mt-1" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <input type="number" id="workRate" min="0" inputmode="decimal" class="input-field mb-3" placeholder="दर (₹ प्रति तास)" required>
+                        <button type="button" id="addWorkBtn" class="w-full bg-amber-500 text-white py-2.5 rounded-lg font-bold hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/30"><i class="fa-solid fa-plus mr-1"></i> जोडा</button>
+                        <div id="workList" class="mt-4 space-y-2 text-xs"></div>
+                    </form>
+
+                    <form class="card border-t-4 border-blue-500">
+                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                            <h3 class="font-bold text-blue-800"><i class="fa-solid fa-users mr-1"></i> ३. मजुरी</h3>
+                            <span class="text-sm font-black bg-blue-100 text-blue-700 px-2 py-1 rounded" id="labourGrantTotal">₹ 0</span>
+                        </div>
+                        <input type="text" id="labourTask" class="input-field mb-3" placeholder="कामाचे स्वरूप (उदा. कापणी)" required>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">मजूर संख्या</label>
+                                <input type="number" id="labourCount" min="0" inputmode="decimal" class="input-field mt-1" placeholder="0" required>
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">रोज (₹)</label>
+                                <input type="number" id="labourRate" min="0" inputmode="decimal" class="input-field mt-1" placeholder="0" required>
+                            </div>
+                        </div>
+                        <button type="button" id="addLabourBtn" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/30"><i class="fa-solid fa-plus mr-1"></i> जोडा</button>
+                        <div id="labourList" class="mt-4 space-y-2 text-xs"></div>
+                    </form>
+                </div>
+
+                <div class="card border-t-4 border-purple-600">
+                    <h3 class="font-bold text-purple-800 mb-4 flex items-center"><i class="fa-solid fa-flask text-purple-600 mr-2"></i> ४. बियाणे, खते व औषधे</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div class="bg-purple-50/50 p-4 rounded-xl border border-purple-100 transition hover:border-purple-300">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-purple-800 border-b border-purple-100 pb-1"><span>बियाणे</span><span id="seedGrantTotal" class="bg-purple-200 px-1.5 rounded">₹0</span></div>
+                            <input type="text" id="sName" list="seedSuggestions" class="input-field mb-2 text-sm h-10" placeholder="नाव / प्रकार" required>
+                        <datalist id="seedSuggestions"></datalist>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <input type="number" id="sQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण" required>
+                                <select id="sUnit" class="input-field text-sm h-10" required>
+                                    <option value="">एका एककात</option>
+                                    <option value="नग">नग</option>
+                                    <option value="किग्र">किग्र</option>
+                                    <option value="बॅग">बॅग</option>
+                                    <option value="पाकीट">पाकीट</option>
+                                    <option value="लिटर">लिटर</option>
+                                </select>
+                                <input type="number" id="sRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addSeedBtn" class="w-full bg-purple-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-purple-700 shadow-sm shadow-purple-600/30">जोडा</button>
+                            <div id="seedList" class="mt-3 text-xs space-y-1.5"></div>
+                        </div>
+                        <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 transition hover:border-emerald-300">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-emerald-800 border-b border-emerald-100 pb-1"><span>खते</span><span id="fertGrantTotal" class="bg-emerald-200 px-1.5 rounded">₹0</span></div>
+                            <input type="text" id="fName" list="fertSuggestions" class="input-field mb-2 text-sm h-10" placeholder="नाव / ग्रेड" required>
+                        <datalist id="fertSuggestions"></datalist>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <input type="number" id="fQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण" required>
+                                <select id="fUnit" class="input-field text-sm h-10" required>
+                                    <option value="">एका एककात</option>
+                                    <option value="नग">नग</option>
+                                    <option value="किग्र">किग्र</option>
+                                    <option value="बॅग">बॅग</option>
+                                    <option value="पाकीट">पाकीट</option>
+                                    <option value="लिटर">लिटर</option>
+                                </select>
+                                <input type="number" id="fRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addFertBtn" class="w-full bg-emerald-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/30">जोडा</button>
+                            <div id="fertList" class="mt-3 text-xs space-y-1.5"></div>
+                        </div>
+                        <div class="bg-pink-50/50 p-4 rounded-xl border border-pink-100 transition hover:border-pink-300">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-pink-800 border-b border-pink-100 pb-1"><span>औषधे</span><span id="medGrantTotal" class="bg-pink-200 px-1.5 rounded">₹0</span></div>
+                            <input type="text" id="mName" list="medSuggestions" class="input-field mb-2 text-sm h-10" placeholder="औषधाचे नाव" required>
+                        <datalist id="medSuggestions"></datalist>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <input type="number" id="mQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण" required>
+                                <select id="mUnit" class="input-field text-sm h-10" required>
+                                    <option value="">एका एककात</option>
+                                    <option value="नग">नग</option>
+                                    <option value="किग्र">किग्र</option>
+                                    <option value="बॅग">बॅग</option>
+                                    <option value="पाकीट">पाकीट</option>
+                                    <option value="लिटर">लिटर</option>
+                                </select>
+                                <input type="number" id="mRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addMedBtn" class="w-full bg-pink-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-pink-700 shadow-sm shadow-pink-600/30">जोडा</button>
+                            <div id="medList" class="mt-3 text-xs space-y-1.5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-t-4 border-teal-500 mt-6 bg-teal-50/30">
+                    <h3 class="font-bold text-teal-900 mb-4 flex items-center"><i class="fa-solid fa-sack-dollar text-teal-600 mr-2"></i> ५. उत्पन्न / पिकाची विक्री</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form class="bg-white p-4 rounded-xl border border-teal-200 shadow-sm">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-teal-800 border-b border-teal-100 pb-2">
+                                <span>विक्री नोंद</span><span id="incomeGrantTotal" class="bg-teal-100 px-2 py-0.5 rounded text-teal-900">₹0</span>
+                            </div>
+                            <input type="text" id="iName" class="input-field mb-2 text-sm h-10" placeholder="तपशील (उदा. सोयाबीन विक्री)" required>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <input type="number" id="iQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण (क्विंटल/टन)" required>
+                                <input type="number" id="iRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addIncomeBtn" class="w-full bg-teal-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-teal-700 shadow-sm shadow-teal-600/30"><i class="fa-solid fa-plus mr-1"></i> उत्पन्नाची नोंद करा</button>
+                        </form>
+                        <div id="incomeList" class="mt-3 text-xs space-y-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- Diesel Logging Section -->
+                <div class="card border-t-4 border-orange-500 mt-6 bg-orange-50/30">
+                    <h3 class="font-bold text-orange-900 mb-4 flex items-center"><i class="fa-solid fa-gas-pump text-orange-600 mr-2"></i> ६. डिझेल लॉगिंग (इंधन हिशोब)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form class="bg-white p-4 rounded-xl border border-orange-200 shadow-sm">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-orange-800 border-b border-orange-100 pb-2">
+                                <span>इंधन भरणा</span>
+                                <span id="dieselTotal" class="bg-orange-100 px-2 py-0.5 rounded text-orange-900">₹0</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">लिटर</label>
+                                    <input type="number" id="dieselLiters" min="0" step="0.01" inputmode="decimal" class="input-field text-sm h-10" placeholder="0.00" required>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">दर/लि (₹)</label>
+                                    <input type="number" id="dieselRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="0" required>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">एचआर (स्टार्ट)</label>
+                                    <input type="number" id="dieselStartHR" min="0" step="0.01" inputmode="decimal" class="input-field text-sm h-10" placeholder="0.00" required>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">एचआर (एन्ड)</label>
+                                    <input type="number" id="dieselEndHR" min="0" step="0.01" inputmode="decimal" class="input-field text-sm h-10" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <button type="button" id="addDieselBtn" class="w-full bg-orange-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-orange-700 shadow-sm shadow-orange-600/30"><i class="fa-solid fa-plus mr-1"></i> इंधन भरणा नोंद करा</button>
+                            <div id="dieselList" class="mt-3 text-xs space-y-1.5 max-h-40 overflow-y-auto"></div>
+                        </form>
+                        <div class="bg-white p-4 rounded-xl border border-orange-200 shadow-sm">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-orange-800 border-b border-orange-100 pb-2">
+                                <span>कार्यक्षमता</span>
+                                <span id="efficiencyDisplay" class="bg-orange-200 px-1.5 rounded text-xs">--</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">एकूण भरलेले इंधन:</span>
+                                    <span class="font-bold text-orange-700"><span id="totalDieselLiters">0</span> लि.</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">एकूण तास:</span>
+                                    <span class="font-bold text-orange-700"><span id="totalDieselHours">0</span> तास</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">सरासरी वापर:</span>
+                                    <span class="font-bold text-orange-700"><span id="avgFuelConsumption">--</span></span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">एकूण खर्च:</span>
+                                    <span class="font-bold text-red-600">₹ <span id="totalDieselCost">0</span></span>
+                                </div>
+                            </div>
+                            <button type="button" id="clearDieselBtn" class="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                                <i class="fa-solid fa-trash mr-1"></i> इतिहास क्लिअर करा
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-slate-900 text-white sticky top-6 shadow-2xl rounded-2xl p-6 border border-slate-700">
+                    <h2 class="text-xl font-bold mb-5 text-emerald-400 border-b border-slate-700 pb-3 flex justify-between items-center">
+                        <span>आजचा हिशोब</span>
+                        <i class="fa-solid fa-calculator text-slate-500"></i>
+                    </h2>
+                    <div class="space-y-5 mb-6">
+                        <div>
+                            <label class="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1 block">मुख्य विक्री उत्पन्न</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                <input type="number" id="totalIncome" min="0" inputmode="decimal" class="input-field dark-input bg-slate-800 border-slate-700 text-emerald-400 text-xl font-black pl-8 py-3" placeholder="0.00">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1 block">इतर खर्च (वाहतूक/हमाली)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                <input type="number" id="transCost" min="0" inputmode="decimal" class="input-field dark-input bg-slate-800 border-slate-700 text-white pl-8" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 space-y-3 shadow-inner">
+                        <div class="flex justify-between text-sm items-center"><span class="text-slate-400">एकूण खर्च:</span><span class="text-red-400 font-bold bg-red-900/20 px-2 py-1 rounded">₹ <span id="finalExp">0</span></span></div>
+                        <div class="flex justify-between text-sm items-center"><span class="text-slate-400">एकूण उत्पन्न:</span><span class="text-emerald-400 font-bold bg-emerald-900/20 px-2 py-1 rounded">₹ <span id="finalIncTotal">0</span></span></div>
+                        <div class="flex justify-between items-end pt-3 border-t border-slate-700 mt-2">
+                            <span class="text-slate-200 font-bold text-sm mb-1">निव्वळ नफा/तोटा:</span>
+                            <span class="text-3xl font-black tracking-tight" id="finalPLDisplay">₹ 0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="my-5 no-print">
+                        <label class="text-[11px] text-slate-400 font-bold uppercase mb-1 block">नोंद तारीख व वेळ निवडा</label>
+                        <input type="datetime-local" id="manualDateTime" class="input-field dark-input bg-slate-800 border-slate-700 text-sm text-white py-2.5">
+                    </div>
+                    
+                    <button type="button" id="saveBtn" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 py-4 rounded-xl font-black text-lg shadow-lg shadow-emerald-600/20 no-print transition-all transform active:scale-95 flex justify-center items-center">
+                        <i class="fa-solid fa-cloud-arrow-up mr-2 text-xl"></i> <span id="saveBtnText">डेटा सेव्ह करा</span>
+                    </button>
+                    <button type="button" id="syncBtn" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 border border-blue-500 py-3 rounded-xl text-sm shadow-md no-print transition-colors font-bold text-white hidden">
+                        <i class="fa-solid fa-arrows-rotate mr-2"></i> <span id="syncBtnText">ऑफलाइन नोंदी सिंक करा</span>
+                    </button>
+                    <button type="button" id="resetBtn" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 py-3 rounded-xl text-sm shadow-md no-print transition-colors font-bold text-slate-300">
+                        <i class="fa-solid fa-rotate-right mr-2"></i> फॉर्म क्लिअर करा
+                    </button>
+                </div>
+
+                <!-- Photo History Sidebar -->
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5 no-print">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-image mr-2 text-pink-600"></i> फोटो इतिहास</h3>
+                    <div id="photoHistoryContainer" class="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                        <p class="col-span-2 text-center text-slate-500 text-sm">अद्याप कोणताही फोटो नाही</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10 mt-10">
+            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200 text-center shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-emerald-200 opacity-50 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                <p class="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-1 relative z-10">सर्वांगीण एकूण उत्पन्न</p>
+                <p class="text-3xl font-black text-emerald-900 relative z-10">₹ <span id="totalAllIncome">0</span></p>
+            </div>
+            <div class="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-2xl border border-red-200 text-center shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-red-200 opacity-50 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                <p class="text-[11px] font-black text-red-600 uppercase tracking-widest mb-1 relative z-10">सर्वांगीण एकूण खर्च</p>
+                <p class="text-3xl font-black text-red-900 relative z-10">₹ <span id="totalAllExp">0</span></p>
+            </div>
+            <div class="bg-slate-900 text-white p-6 rounded-2xl border border-slate-700 text-center shadow-xl relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-slate-700 opacity-50 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-vault"></i></div>
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">एकूण निव्वळ नफा/तोटा</p>
+                <p class="text-3xl font-black text-emerald-400 relative z-10">₹ <span id="totalAllProfit">0</span></p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-md border border-gray-200 mb-10">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-100 pb-5">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center"><i class="fa-solid fa-clock-rotate-left mr-3 text-blue-500"></i> मागील नोंदी व रिपोर्ट</h2>
+                <div class="flex w-full md:w-auto relative no-print">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                    </div>
+                    <input type="text" id="filterFarm" list="filterSuggestions" class="pl-10 pr-4 py-2.5 border-2 border-gray-200 focus:border-blue-500 rounded-xl text-sm w-full outline-none transition-colors" placeholder="शेतकरी नुसार शोधा...">
+                    <datalist id="filterSuggestions"></datalist>
+                </div>
+            </div>
+
+            <div id="historyTableWrapper" class="overflow-x-auto rounded-xl border border-gray-100 shadow-inner hidden md:block">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-gray-200">
+                            <th class="p-4 font-bold">दिनांक / पीक / शेत</th>
+                            <th class="p-4 font-bold">तपशील</th>
+                            <th class="p-4 text-right font-bold">खर्च (₹)</th>
+                            <th class="p-4 text-right font-bold">उत्पन्न (₹)</th>
+                            <th class="p-4 text-right font-black text-slate-800">नफा/तोटा</th>
+                            <th class="p-4 text-center no-print font-bold">कृती</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody" class="text-sm divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i> डेटा लोड होत आहे...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="historyCardContainer" class="space-y-4 md:hidden">
+                <div class="p-6 text-center text-slate-500">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i> डेटा लोड होत आहे...
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-6 shadow-md border border-gray-200 mb-10">
+            <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center"><i class="fa-solid fa-chart-line mr-3 text-green-500"></i> डेटा विश्लेषण आणि अंतर्दृष्टी</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="font-bold text-slate-800 mb-4">खर्चांचे प्रकार</h3>
+                    <canvas id="expenseChart" width="400" height="300"></canvas>
+                </div>
+                <div class="card">
+                    <h3 class="font-bold text-slate-800 mb-4">नफा/तोटा ट्रेंड</h3>
+                    <canvas id="profitChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-6 mt-6">
+                <div class="card">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-seedling mr-2 text-green-500"></i>बुद्धिमान सूचना</h3>
+                    <p id="insights" class="text-slate-700 text-sm">डेटा लोड होत आहे...</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center text-slate-400 text-xs pb-10 no-print">
+            <p>माझी शेती प्रो डायरी &copy; 2026 | सर्व हक्क सुरक्षित</p>
+        </footer>
+    </div>
+
+    <script>
+        // NOTE: Update this URL with your Google Apps Script deployment
+        // Make sure CORS headers are set in the Apps Script doPost function:
+        // response.addHeader("Access-Control-Allow-Origin", "*");
+        // response.addHeader("Content-Type", "text/plain;charset=utf-8");
+        // In Apps Script, parse the payload using JSON.parse(e.postData.contents)
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYCOruRzujaRHIdZvaagjUJDibUs_G74bfagywlqU01j3FTz-krLZwzms7vlHVJQAc/exec";
+        
+        let lists = { seed: [], fert: [], med: [], work: [], labour: [], income: [] };
+        let records = [];
+        let editingRecordId = null;
+        let expenseChartInstance = null;
+        let profitChartInstance = null;
+        const DB_NAME = 'shetiDiaryDB';
+        const DB_VERSION = 1;
+        const PENDING_STORE = 'pendingRecords';
+        const DIESEL_STORE = 'diesel';
+        let dbPromise = null;
+        let offlineDb = null;
+        let pendingRecords = [];
+
+        // UUID Generator for unique record IDs
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // XSS Protection: Escape HTML special characters
+        function escapeHTML(str) {
+            if (!str) return '';
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
+            return str.replace(/[&<>"']/g, tag => map[tag]);
+        }
+
+        // Set Crop to "लागू नाही" (Not Applicable)
+        function setCropToNA() {
+            document.getElementById('cropName').value = 'लागू नाही';
+        }
+
+        function setupEventListeners() {
+            const backupClose = document.getElementById('backupReminderClose');
+            if (backupClose) {
+                backupClose.addEventListener('click', () => {
+                    const backupReminder = document.getElementById('backupReminder');
+                    if (backupReminder) backupReminder.classList.add('hidden');
+                });
+            }
+
+            const setCropNAButton = document.getElementById('setCropNAButton');
+            if (setCropNAButton) {
+                setCropNAButton.addEventListener('click', setCropToNA);
+            }
+
+            const galleryButton = document.getElementById('galleryButton');
+            if (galleryButton) {
+                galleryButton.addEventListener('click', () => document.getElementById('photoUpload').click());
+            }
+
+            const photoUpload = document.getElementById('photoUpload');
+            if (photoUpload) {
+                photoUpload.addEventListener('change', uploadPhotoFromGallery);
+            }
+
+            const workType = document.getElementById('workType');
+            if (workType) {
+                workType.addEventListener('change', toggleCustomWorkField);
+            }
+
+            const addWorkBtn = document.getElementById('addWorkBtn');
+            if (addWorkBtn) {
+                addWorkBtn.addEventListener('click', () => addItem('work'));
+            }
+
+            const addLabourBtn = document.getElementById('addLabourBtn');
+            if (addLabourBtn) {
+                addLabourBtn.addEventListener('click', () => addItem('labour'));
+            }
+
+            const addSeedBtn = document.getElementById('addSeedBtn');
+            if (addSeedBtn) {
+                addSeedBtn.addEventListener('click', () => addItem('seed'));
+            }
+
+            const addFertBtn = document.getElementById('addFertBtn');
+            if (addFertBtn) {
+                addFertBtn.addEventListener('click', () => addItem('fert'));
+            }
+
+            const addMedBtn = document.getElementById('addMedBtn');
+            if (addMedBtn) {
+                addMedBtn.addEventListener('click', () => addItem('med'));
+            }
+
+            const addIncomeBtn = document.getElementById('addIncomeBtn');
+            if (addIncomeBtn) {
+                addIncomeBtn.addEventListener('click', () => addItem('income'));
+            }
+
+            const addDieselBtn = document.getElementById('addDieselBtn');
+            if (addDieselBtn) {
+                addDieselBtn.addEventListener('click', addDieselEntry);
+            }
+
+            const clearDieselBtn = document.getElementById('clearDieselBtn');
+            if (clearDieselBtn) {
+                clearDieselBtn.addEventListener('click', clearDieselHistory);
+            }
+
+            const totalIncome = document.getElementById('totalIncome');
+            if (totalIncome) {
+                totalIncome.addEventListener('input', updateCalculations);
+            }
+
+            const transCost = document.getElementById('transCost');
+            if (transCost) {
+                transCost.addEventListener('input', updateCalculations);
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveRecord);
+            }
+
+            const syncBtn = document.getElementById('syncBtn');
+            if (syncBtn) {
+                syncBtn.addEventListener('click', syncPendingRecords);
+            }
+
+            const resetBtn = document.getElementById('resetBtn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', resetForm);
+            }
+
+            const filterFarm = document.getElementById('filterFarm');
+            if (filterFarm) {
+                filterFarm.addEventListener('input', renderHistory);
+            }
+
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            if (exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', exportToCSV);
+            }
+
+            const exportPdfBtn = document.getElementById('exportPdfBtn');
+            if (exportPdfBtn) {
+                exportPdfBtn.addEventListener('click', exportToPDF);
+            }
+
+            const printBtn = document.getElementById('printBtn');
+            if (printBtn) {
+                printBtn.addEventListener('click', () => window.print());
+            }
+
+            const logo = document.getElementById('logoImg');
+            if (logo) {
+                logo.addEventListener('error', function() {
+                    if (this.src.indexOf('icon-192x192.png') === -1) {
+                        this.onerror = null;
+                        this.src = './icon-192x192.png';
+                    }
+                });
+            }
+
+            document.body.addEventListener('click', function(event) {
+                const button = event.target.closest('[data-action]');
+                if (!button) return;
+
+                const action = button.dataset.action;
+                switch (action) {
+                    case 'remove-item': {
+                        const type = button.dataset.type;
+                        const id = Number(button.dataset.id);
+                        if (!Number.isNaN(id)) {
+                            removeItem(type, id);
+                        }
+                        break;
+                    }
+                    case 'edit-record': {
+                        editRecord(button.dataset.id);
+                        break;
+                    }
+                    case 'delete-record': {
+                        deleteRecord(event, button.dataset.id, button.dataset.date, button.dataset.farm);
+                        break;
+                    }
+                    case 'view-photo': {
+                        const photoId = Number(button.dataset.photoId);
+                        if (!Number.isNaN(photoId)) {
+                            viewPhotoDetails(photoId);
+                        }
+                        break;
+                    }
+                    case 'delete-diesel': {
+                        const dieselId = Number(button.dataset.id);
+                        if (!Number.isNaN(dieselId)) {
+                            deleteDieselEntry(dieselId);
+                        }
+                        break;
+                    }
+                }
+            });
+
+            // OCR Event Listeners
+            const ocrScanButton = document.getElementById('ocrScanButton');
+            if (ocrScanButton) {
+                ocrScanButton.addEventListener('click', () => document.getElementById('ocrReceiptUpload').click());
+            }
+
+            const ocrCameraButton = document.getElementById('ocrCameraButton');
+            if (ocrCameraButton) {
+                ocrCameraButton.addEventListener('click', openCamera);
+            }
+
+            const ocrReceiptUpload = document.getElementById('ocrReceiptUpload');
+            if (ocrReceiptUpload) {
+                ocrReceiptUpload.addEventListener('change', handleOCRImage);
+            }
+
+            const ocrAutoFillBtn = document.getElementById('ocrAutoFillBtn');
+            if (ocrAutoFillBtn) {
+                ocrAutoFillBtn.addEventListener('click', autoFillFromOCR);
+            }
+
+            const ocrClearBtn = document.getElementById('ocrClearBtn');
+            if (ocrClearBtn) {
+                ocrClearBtn.addEventListener('click', clearOCRResults);
+            }
+
+            // Cropping Event Listeners
+            const ocrRotateBtn = document.getElementById('ocrRotateBtn');
+            if (ocrRotateBtn) {
+                ocrRotateBtn.addEventListener('click', () => rotateCropImage(90));
+            }
+
+            const ocrResetCropBtn = document.getElementById('ocrResetCropBtn');
+            if (ocrResetCropBtn) {
+                ocrResetCropBtn.addEventListener('click', resetCropImage);
+            }
+
+            const ocrCropConfirmBtn = document.getElementById('ocrCropConfirmBtn');
+            if (ocrCropConfirmBtn) {
+                ocrCropConfirmBtn.addEventListener('click', confirmCrop);
+            }
+
+            const ocrSkipCropBtn = document.getElementById('ocrSkipCropBtn');
+            if (ocrSkipCropBtn) {
+                ocrSkipCropBtn.addEventListener('click', skipCropping);
+            }
+        }
+
+        window.onload = function() {
+            setNow();
+            updateClock();
+            setInterval(updateClock, 5000);
+            
+            // Initialize offline database
+            initOfflineDB();
+            
+            // Load data from sheet
+            loadDataFromSheet();
+            initPhotoDB();
+            initDieselDB();
+            
+            // Setup online/offline event listeners
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+            
+            // Setup DOM event binding
+            setupEventListeners();
+            
+            // Initial network status check
+            updateNetworkStatus();
+        };
+
+        function setNow() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+            document.getElementById('manualDateTime').value = localISOTime;
+        }
+
+        function updateClock() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            document.getElementById('clockDisplay').innerText = new Date().toLocaleString('mr-IN', options);
+        }
+
+        // ========== OFFLINE DATABASE FUNCTIONS ==========
+        
+        async function initOfflineDB() {
+            if (!('indexedDB' in window)) {
+                console.warn('IndexedDB is not supported');
+                Swal.fire('सूचना', 'खाजगी मोडमध्ये ऑफलाइन डेटा जतन होणार नाही.', 'info');
+                return;
+            }
+
+            try {
+                dbPromise = idb.openDB(DB_NAME, DB_VERSION, {
+                    upgrade(db) {
+                        if (!db.objectStoreNames.contains(PENDING_STORE)) {
+                            db.createObjectStore(PENDING_STORE, { keyPath: 'id' });
+                        }
+                        if (!db.objectStoreNames.contains(DIESEL_STORE)) {
+                            db.createObjectStore(DIESEL_STORE, { keyPath: 'id' });
+                        }
+                    }
+                });
+
+                await dbPromise;
+                await loadPendingRecords();
+            } catch (error) {
+                console.warn('Offline DB initialization failed:', error);
+                Swal.fire('सूचना', 'खाजगी मोडमध्ये किंवा ब्राउझर प्रतिबंधित केल्यामुळे ऑफलाइन डेटा जतन होणार नाही.', 'info');
+                dbPromise = null;
+            }
+        }
+
+        async function saveOfflineRecord(record) {
+            if (!dbPromise) {
+                throw new Error('Offline database is not initialized');
+            }
+
+            const db = await dbPromise;
+            await db.put(PENDING_STORE, record);
+            await loadPendingRecords();
+            return record;
+        }
+
+        async function loadPendingRecords() {
+            if (!dbPromise) return;
+
+            const db = await dbPromise;
+            pendingRecords = await db.getAll(PENDING_STORE) || [];
+            updateNetworkStatus();
+
+            const syncBtn = document.getElementById('syncBtn');
+            if (pendingRecords.length > 0) {
+                syncBtn.classList.remove('hidden');
+                syncBtn.querySelector('#syncBtnText').innerText = navigator.onLine ? `${pendingRecords.length} प्रलंबित नोंदी सिंक करा` : `${pendingRecords.length} ऑफलाइन नोंदी सिंक करा`;
+            } else {
+                syncBtn.classList.add('hidden');
+            }
+        }
+
+        function updateNetworkStatus() {
+            const statusDiv = document.getElementById('networkStatus');
+            const backupReminder = document.getElementById('backupReminder');
+            const pendingCount = document.getElementById('pendingRecordsCount');
+            
+            // Update backup reminder notification
+            if (backupReminder && pendingCount) {
+                if (pendingRecords.length > 0) {
+                    backupReminder.classList.remove('hidden');
+                    pendingCount.innerText = pendingRecords.length;
+                } else {
+                    backupReminder.classList.add('hidden');
+                }
+            }
+            
+            if (statusDiv) {
+                if (navigator.onLine) {
+                    if (pendingRecords.length > 0) {
+                        statusDiv.innerHTML = `<span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-bold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i> सिंक होत आहे... (${pendingRecords.length})</span>`;
+                    } else {
+                        statusDiv.innerHTML = '<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold"><i class="fa-solid fa-wifi mr-1"></i> ऑनलाइन</span>';
+                    }
+                } else {
+                    statusDiv.innerHTML = `<span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-bold animate-pulse"><i class="fa-solid fa-wifi-slash mr-1"></i> ऑफलाइन ${pendingRecords.length > 0 ? `(${pendingRecords.length})` : ''}</span>`;
+                }
+            }
+        }
+
+        async function assertOkResponse(response) {
+            if (response.ok) {
+                return response;
+            }
+
+            let body = await response.text();
+            try {
+                const json = JSON.parse(body);
+                body = json.message || json.error || body;
+            } catch (ignore) {}
+
+            throw new Error(`सर्व्हर त्रुटी ${response.status}: ${body}`);
+        }
+
+        function getFriendlyNetworkMessage(error) {
+            if (!navigator.onLine) {
+                return 'इंटरनेट कनेक्शन उपलब्ध नाही. कृपया कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.';
+            }
+            if (error && error.message && error.message.includes('Failed to fetch')) {
+                return 'सर्व्हरकडून प्रतिसाद मिळत नाही, कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.';
+            }
+            return error.message || 'सर्व्हरची अज्ञात त्रुटी आली.';
+        }
+
+        const IMAGE_MAX_DIMENSION = 1024;
+        const IMAGE_OUTPUT_QUALITY = 0.75;
+
+        function createImageFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = reader.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function compressImage(file, maxDimension = IMAGE_MAX_DIMENSION, quality = IMAGE_OUTPUT_QUALITY) {
+            if (window.Compressor) {
+                return new Promise((resolve, reject) => {
+                    new Compressor(file, {
+                        quality: quality,
+                        maxWidth: maxDimension,
+                        maxHeight: maxDimension,
+                        convertSize: Infinity,
+                        checkOrientation: true,
+                        success(result) {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(result);
+                        },
+                        error(err) {
+                            console.warn('CompressorJS failed, falling back to canvas resize:', err);
+                            reject(err);
+                        }
+                    });
+                }).catch(async () => {
+                    return await compressImageFallback(file, maxDimension, quality);
+                });
+            }
+            return await compressImageFallback(file, maxDimension, quality);
+        }
+
+        async function compressImageFallback(file, maxDimension = IMAGE_MAX_DIMENSION, quality = IMAGE_OUTPUT_QUALITY) {
+            const img = await createImageFromFile(file);
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxDimension || height > maxDimension) {
+                const ratio = Math.min(maxDimension / width, maxDimension / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedData = canvas.toDataURL('image/jpeg', quality);
+            if (compressedData.length > file.size * 1.05) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+            return compressedData;
+        }
+
+        async function sendRecordToServer(record) {
+            const response = await fetch(SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(record)
+            });
+            await assertOkResponse(response);
+            const result = await response.json();
+            if (result.success || result.status === "success") {
+                return true;
+            }
+            throw new Error(result.message || 'सर्व्हरवर सेव्ह केली जाऊ शकले नाही.');
+        }
+
+        async function syncRecordWithRetry(record, retries = 3) {
+            let lastError;
+            let delay = 1000;
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                if (!navigator.onLine) {
+                    throw new Error('offline');
+                }
+                try {
+                    await sendRecordToServer(record);
+                    return true;
+                } catch (err) {
+                    lastError = err;
+                    if (attempt < retries) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+            }
+            throw lastError;
+        }
+
+        async function processPendingRecords(autoSync = false) {
+            if (pendingRecords.length === 0) return { success: 0, failed: 0 };
+            if (!navigator.onLine) {
+                if (!autoSync) {
+                    Swal.fire('नेटवर्क कनेक्शन आवश्यक', 'कृपया इंटरनेट कनेक्शन तपासा.', 'error');
+                }
+                return { success: 0, failed: pendingRecords.length };
+            }
+
+            const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            if (autoSync) {
+                toast.fire({ icon: 'info', title: `${pendingRecords.length} नोंदी सिंक होत आहेत...` });
+            }
+
+            let successCount = 0;
+            let failedCount = 0;
+
+            for (const record of [...pendingRecords]) {
+                try {
+                    await syncRecordWithRetry(record);
+                    const db = await dbPromise;
+                    await db.delete(PENDING_STORE, record.id);
+                    successCount++;
+                } catch (error) {
+                    failedCount++;
+                    console.warn('Sync failed for record:', record.id, error);
+                    if (!navigator.onLine) break;
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            await loadPendingRecords();
+            updateNetworkStatus();
+
+            if (successCount > 0) {
+                toast.fire({ icon: 'success', title: `${successCount} नोंदी सिंक झाल्या` });
+            }
+            if (failedCount > 0 && !autoSync) {
+                toast.fire({ icon: 'warning', title: `${failedCount} नोंदी प्रलंबित आहेत` });
+            }
+            return { success: successCount, failed: failedCount };
+        }
+
+        async function handleOnline() {
+            console.log('Network connection restored');
+            updateNetworkStatus();
+            
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Toast.fire({ icon: 'success', title: 'नेटवर्क कनेक्ट झाले!' });
+            
+            if (pendingRecords.length > 0) {
+                await processPendingRecords(true);
+            }
+        }
+
+        async function handleOffline() {
+            console.log('Network connection lost');
+            updateNetworkStatus();
+            
+            // Show notification
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Toast.fire({ icon: 'warning', title: 'नेटवर्क डिस्कनेक्ट झाला!' });
+        }
+
+        async function syncPendingRecords() {
+            if (pendingRecords.length === 0) {
+                Swal.fire('कोणतीही नोंद नाही', 'ऑफलाइन सिंक करण्यासाठी कोणतीही अप्रकाशित नोंद नाही.', 'info');
+                return;
+            }
+
+            const syncBtn = document.getElementById('syncBtn');
+            const syncBtnText = document.getElementById('syncBtnText');
+            const originalText = syncBtnText.innerText;
+
+            syncBtn.disabled = true;
+            syncBtnText.innerText = 'सिंक होत आहे...';
+
+            await processPendingRecords(false);
+
+            syncBtn.disabled = false;
+            syncBtnText.innerText = originalText;
+
+            if (pendingRecords.length === 0) {
+                syncBtn.classList.add('hidden');
+            }
+        }
+
+        // ========== END OFFLINE DATABASE FUNCTIONS ==========
+
+        // ========== OCR RECEIPT SCANNER FUNCTIONS ==========
+        let ocrExtractedData = {
+            text: '',
+            amounts: [],
+            selectedAmount: null
+        };
+        let cropperInstance = null;
+        let currentImageData = null;
+
+        async function openCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                Swal.fire('ब्राउझर समर्थन नाही', 'तुमच्या मोबाइल ब्राउझरमध्ये कॅमेरा API ला समर्थन नाही. कृपया Chrome, Firefox किंवा Edge वापरा.', 'warning');
+                return;
+            }
+
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                Swal.fire('सुरक्षित कनेक्शन आवश्यक', 'कॅमेरा ऍक्सेससाठी HTTPS किंवा स्थानिक सर्व्हर आवश्यक आहे. ही फाईल थेट "file://" वरून चालवल्यास कॅमेरा काम करणार नाही.', 'warning');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } },
+                    audio: false
+                });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+
+                Swal.fire({
+                    title: 'कॅमेरा',
+                    html: `<video id="cameraVideo" style="width: 100%; max-width: 400px; border-radius: 8px;" playsinline muted autoplay></video>
+                           <div style="margin-top: 10px; text-align: center;">
+                               <button id="capturePhoto" class="swal2-confirm swal2-styled" style="background-color: #06b6d4;">📸 फोटो काढा</button>
+                           </div>`,
+                    showConfirmButton: false,
+                    showCancelButton: true,
+                    cancelButtonText: 'रद्द करा',
+                    allowOutsideClick: false,
+                    didOpen: (modal) => {
+                        const cameraVideo = modal.querySelector('#cameraVideo');
+                        const captureBtn = modal.querySelector('#capturePhoto');
+                        cameraVideo.srcObject = stream;
+                        cameraVideo.play().catch(() => {});
+
+                        captureBtn.addEventListener('click', () => {
+                            if (cameraVideo.videoWidth === 0 || cameraVideo.videoHeight === 0) {
+                                Swal.showValidationMessage('कृपया कॅमेरासाठी प्रतीक्षा करा...');
+                                return;
+                            }
+                            canvas.width = cameraVideo.videoWidth;
+                            canvas.height = cameraVideo.videoHeight;
+                            context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                            stream.getTracks().forEach(track => track.stop());
+                            Swal.close();
+                            processOCRImage(imageData);
+                        });
+                    },
+                    willClose: () => {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                });
+            } catch (error) {
+                const message = (error && error.name === 'NotAllowedError')
+                    ? 'कॅमेरा वापरण्यास अनुमती देण्यात आली नाही. कृपया ब्राउझर सेटिंग्जमध्ये कॅमेरा परवानगी द्या.'
+                    : 'कॅमेरा अॅक्सेस करताना त्रुटी: ' + (error.message || error.name);
+                Swal.fire('त्रुटी', message, 'error');
+            }
+        }
+
+        async function handleOCRImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const imageData = event.target.result;
+                    // Compress image for faster OCR processing
+                    const compressedImage = await compressImage(file, 1200, 0.85);
+                    processOCRImage(compressedImage || imageData);
+                };
+                reader.readAsDataURL(file);
+            } catch (error) {
+                Swal.fire('त्रुटी', 'चित्र लोड करण्यात अडचण: ' + error.message, 'error');
+            }
+        }
+
+        function initCropper(imageData) {
+            const ocrImage = document.getElementById('ocrImage');
+            const cropperContainer = document.getElementById('cropperContainer');
+            
+            // Clear previous cropper if exists
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+
+            // Set image source
+            ocrImage.src = imageData;
+            currentImageData = imageData;
+
+            // Wait for image to load, then initialize cropper
+            ocrImage.onload = () => {
+                // Initialize Cropper.js
+                cropperInstance = new Cropper(ocrImage, {
+                    autoCropArea: 0.8,
+                    responsive: true,
+                    restore: true,
+                    guides: true,
+                    center: true,
+                    highlight: true,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: true,
+                    viewMode: 1,
+                    aspectRatio: NaN, // Free aspect ratio
+                    minContainerHeight: 300,
+                    minCanvasHeight: 250,
+                    minCropBoxHeight: 100,
+                    minCropBoxWidth: 100,
+                    backgroundColor: '#f0f0f0',
+                    autoCrop: true,
+                    modal: true,
+                    background: true,
+                    checkImageOrientation: true
+                });
+            };
+        }
+
+        function rotateCropImage(degree = 90) {
+            if (!cropperInstance) return;
+            cropperInstance.rotate(degree);
+        }
+
+        function resetCropImage() {
+            if (!cropperInstance) return;
+            cropperInstance.reset();
+        }
+
+        async function confirmCrop() {
+            if (!cropperInstance) {
+                Swal.fire('त्रुटी', 'क्रॉपर इनिशियलाइজ नाही झाला.', 'error');
+                return;
+            }
+
+            try {
+                const canvas = cropperInstance.getCroppedCanvas({
+                    maxWidth: 1000,
+                    maxHeight: 1000,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                });
+
+                const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
+                
+                // Destroy cropper
+                cropperInstance.destroy();
+                cropperInstance = null;
+
+                // Hide preview and start OCR
+                const preview = document.getElementById('ocrPreview');
+                preview.classList.add('hidden');
+
+                processOCRWithCroppedImage(croppedImageData);
+
+            } catch (error) {
+                Swal.fire('त्रुटी', 'क्रॉप करताना अडचण: ' + error.message, 'error');
+            }
+        }
+
+        function skipCropping() {
+            if (!currentImageData) {
+                Swal.fire('त्रुटी', 'चित्र डेटा सापडला नाही.', 'error');
+                return;
+            }
+
+            try {
+                // Destroy cropper
+                if (cropperInstance) {
+                    cropperInstance.destroy();
+                    cropperInstance = null;
+                }
+
+                // Hide preview and start OCR with full image
+                const preview = document.getElementById('ocrPreview');
+                preview.classList.add('hidden');
+
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Toast.fire({ 
+                    icon: 'info', 
+                    title: 'संपूर्ण फोटो वापरत आहे...'
+                });
+
+                processOCRWithCroppedImage(currentImageData);
+            } catch (error) {
+                Swal.fire('त्रुटी', 'अडचण आली: ' + error.message, 'error');
+            }
+        }
+
+        async function processOCRImage(imageData) {
+            const preview = document.getElementById('ocrPreview');
+            const results = document.getElementById('ocrResults');
+
+            // Show cropper
+            preview.classList.remove('hidden');
+            results.classList.add('hidden');
+
+            // Initialize cropper
+            initCropper(imageData);
+        }
+
+        async function processOCRWithCroppedImage(croppedImageData) {
+            const processing = document.getElementById('ocrProcessing');
+            const results = document.getElementById('ocrResults');
+
+            processing.classList.remove('hidden');
+            results.classList.add('hidden');
+
+            try {
+                // Check if Tesseract is available
+                if (typeof Tesseract === 'undefined') {
+                    throw new Error('Tesseract.js लायब्ररी लोड होत नाही. कृपया इंटरनेट कनेक्शन तपासा.');
+                }
+
+                const statusElement = document.getElementById('ocrStatus');
+                const progressElement = document.getElementById('ocrProgress');
+
+                // Initialize Tesseract worker
+                const { createWorker } = Tesseract;
+                const worker = await createWorker();
+
+                // Set progress tracking
+                worker.on('progress', (progress) => {
+                    const percent = Math.round(progress.progress * 100);
+                    progressElement.style.width = percent + '%';
+                    
+                    // Show different status messages
+                    if (percent < 30) {
+                        statusElement.innerText = 'भाषा डाउनलोड होत आहे...';
+                    } else if (percent < 60) {
+                        statusElement.innerText = 'मॉडेल लोड होत आहे...';
+                    } else {
+                        statusElement.innerText = `मजकूर वाचत आहे (${percent}%)...`;
+                    }
+                });
+
+                // Perform OCR with Marathi language support
+                statusElement.innerText = 'भाषा डाउनलोड होत आहे...';
+                await worker.loadLanguage('mar+eng');
+                
+                statusElement.innerText = 'मॉडेल इनिशियलाइज होत आहे...';
+                await worker.initialize('mar+eng');
+                
+                statusElement.innerText = 'मजकूर वाचत आहे...';
+                const { data } = await worker.recognize(croppedImageData);
+                const recognizedText = data.text;
+
+                await worker.terminate();
+
+                // Extract amounts from recognized text
+                const amounts = extractAmountsFromText(recognizedText);
+
+                // Update UI with results
+                ocrExtractedData = {
+                    text: recognizedText,
+                    amounts: amounts,
+                    selectedAmount: amounts.length > 0 ? amounts[0].value : null
+                };
+
+                displayOCRResults(recognizedText, amounts);
+                processing.classList.add('hidden');
+                results.classList.remove('hidden');
+
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                Toast.fire({ 
+                    icon: 'success', 
+                    title: `यशस्वी!`,
+                    text: `${amounts.length} रक्कम सापडल्या!`
+                });
+
+            } catch (error) {
+                console.error('OCR Error:', error);
+                processing.classList.add('hidden');
+                Swal.fire('OCR त्रुटी', error.message || 'मजकूर वाचताना अडचण आली.', 'error');
+            }
+        }
+
+        function extractAmountsFromText(text) {
+            const amounts = [];
+            
+            // Match currency patterns: ₹ 1234, ₹1234.50, Rs. 500, Rs 500, etc.
+            const patterns = [
+                /₹\s*([0-9]{1,}(?:[0-9,]*[0-9])?(?:\.[0-9]{1,2})?)/g,
+                /rs\.?\s*([0-9]{1,}(?:[0-9,]*[0-9])?(?:\.[0-9]{1,2})?)/gi,
+                /रु\s*([0-9]{1,}(?:[0-9,]*[0-9])?(?:\.[0-9]{1,2})?)/g,
+                /रुपये?\s*([0-9]{1,}(?:[0-9,]*[0-9])?(?:\.[0-9]{1,2})?)/gi,
+                // Also match standalone numbers that look like amounts (3+ digits)
+                /\b([0-9]{3,}(?:[0-9,]*[0-9])?(?:\.[0-9]{1,2})?)\b/g
+            ];
+
+            const foundAmounts = new Set();
+
+            patterns.forEach(pattern => {
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    let numStr = match[1].replace(/,/g, '');
+                    const num = parseFloat(numStr);
+                    
+                    // Only include reasonable amounts (₹10 to ₹1,000,000)
+                    if (num >= 10 && num <= 1000000) {
+                        foundAmounts.add(num);
+                    }
+                }
+            });
+
+            // Convert to array and sort descending (most likely to be the receipt amount)
+            return Array.from(foundAmounts)
+                .map(value => ({
+                    value: value,
+                    display: '₹' + value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                }))
+                .sort((a, b) => b.value - a.value);
+        }
+
+        function displayOCRResults(text, amounts) {
+            const ocrText = document.getElementById('ocrText');
+            const ocrAmounts = document.getElementById('ocrAmounts');
+
+            // Display recognized text (first 200 characters)
+            ocrText.innerText = text.substring(0, 500) + (text.length > 500 ? '...' : '');
+
+            // Display found amounts
+            ocrAmounts.innerHTML = amounts.slice(0, 5).map((amount, index) => `
+                <label class="flex items-center p-2 bg-white border border-blue-100 rounded-lg cursor-pointer hover:bg-blue-50 transition">
+                    <input type="radio" name="ocrAmount" value="${amount.value}" ${index === 0 ? 'checked' : ''} class="mr-2" onchange="ocrExtractedData.selectedAmount = ${amount.value}">
+                    <span class="font-bold text-lg text-blue-600">${amount.display}</span>
+                </label>
+            `).join('');
+
+            // Add manual entry option
+            ocrAmounts.innerHTML += `
+                <div class="p-2 bg-white border border-gray-200 rounded-lg">
+                    <label class="text-xs font-bold text-gray-700 block mb-1">किंवा हाताने टाइप करा:</label>
+                    <div class="flex gap-2">
+                        <span class="text-lg font-bold text-gray-400">₹</span>
+                        <input type="number" id="ocrManualAmount" min="0" step="0.01" class="flex-1 input-field text-sm h-8" placeholder="0.00">
+                    </div>
+                </div>
+            `;
+        }
+
+        function autoFillFromOCR() {
+            const fieldSelect = document.getElementById('ocrFieldSelect');
+            const selectedField = fieldSelect.value;
+
+            if (!selectedField) {
+                Swal.fire('निवड आवश्यक', 'कृपया क्षेत्र निवडा.', 'warning');
+                return;
+            }
+
+            // Get the amount to fill
+            let amountToFill = parseFloat(document.getElementById('ocrManualAmount').value) || ocrExtractedData.selectedAmount;
+
+            if (!amountToFill || amountToFill <= 0) {
+                Swal.fire('रक्कम आवश्यक', 'कृपया रक्कम निवडा किंवा टाइप करा.', 'warning');
+                return;
+            }
+
+            try {
+                if (selectedField === 'manual') {
+                    // Manual entry mode - show the extracted text for user review
+                    document.getElementById('sName').focus();
+                    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                    Toast.fire({ 
+                        icon: 'info', 
+                        title: 'OCR मजकूर तपासा',
+                        text: ocrExtractedData.text.substring(0, 100) + '...'
+                    });
+                } else if (selectedField === 'seed' || selectedField === 'fert' || selectedField === 'med') {
+                    // Fill seed/fert/med form
+                    const pre = selectedField === 'seed' ? 's' : (selectedField === 'fert' ? 'f' : 'm');
+                    
+                    // Try to extract product name from text
+                    const productName = extractProductName(ocrExtractedData.text, selectedField);
+                    
+                    document.getElementById(pre + 'Name').value = productName || 'पावतीवरून ओळखलेले';
+                    document.getElementById(pre + 'Qty').value = '1';
+                    document.getElementById(pre + 'Unit').value = 'बॅग';
+                    document.getElementById(pre + 'Rate').value = Math.round(amountToFill);
+                    
+                    document.getElementById(pre + 'Name').focus();
+                    Swal.fire('भरले!', `${selectedField === 'seed' ? 'बियाणे' : selectedField === 'fert' ? 'खते' : 'औषधे'} क्षेत्र दर ₹${Math.round(amountToFill)} सह भरले गेले.`, 'success');
+                } else if (selectedField === 'labour' || selectedField === 'work') {
+                    // Fill labour/work rate
+                    if (selectedField === 'labour') {
+                        document.getElementById('labourRate').value = Math.round(amountToFill);
+                        document.getElementById('labourTask').focus();
+                        Swal.fire('भरले!', `मजुरी दर ₹${Math.round(amountToFill)}/दिवस सह भरले गेले.`, 'success');
+                    } else {
+                        document.getElementById('workRate').value = Math.round(amountToFill);
+                        document.getElementById('startHR').focus();
+                        Swal.fire('भरले!', `यंत्र दर ₹${Math.round(amountToFill)}/तास सह भरले गेले.`, 'success');
+                    }
+                }
+
+                updateCalculations();
+            } catch (error) {
+                Swal.fire('त्रुटी', 'डेटा भरताना अडचण: ' + error.message, 'error');
+            }
+        }
+
+        function extractProductName(text, type) {
+            // Simple heuristic to extract product names
+            const lines = text.split('\n').filter(l => l.trim().length > 2);
+            
+            // Look for common keywords
+            const keywords = {
+                'seed': ['बियाणे', 'बीज', 'seed', 'बीजांची'],
+                'fert': ['खत', 'खाद', 'fertilizer', 'खतीचे', 'खाद्य', 'NPK', 'DAP', 'यूरिया'],
+                'med': ['औषधे', 'दवा', 'pesticide', 'स्प्रे', 'fungicide', 'insecticide']
+            };
+
+            const keywords_list = keywords[type] || [];
+            for (let line of lines) {
+                for (let keyword of keywords_list) {
+                    if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                        return line.substring(0, 30).trim();
+                    }
+                }
+            }
+
+            // Default: return first non-numeric line
+            for (let line of lines) {
+                if (!/^\d+/.test(line) && line.length > 3) {
+                    return line.substring(0, 30).trim();
+                }
+            }
+
+            return null;
+        }
+
+        function clearOCRResults() {
+            document.getElementById('ocrResults').classList.add('hidden');
+            document.getElementById('ocrPreview').classList.add('hidden');
+            document.getElementById('ocrReceiptUpload').value = '';
+            
+            // Destroy cropper if exists
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+            
+            ocrExtractedData = { text: '', amounts: [], selectedAmount: null };
+        }
+
+        // ========== END OCR FUNCTIONS ==========
+
+        function parseNumberField(id) {
+            const element = document.getElementById(id);
+            if (!element) return NaN;
+            const value = element.value;
+            const number = parseFloat(String(value).trim());
+            return Number.isFinite(number) ? number : NaN;
+        }
+
+        function addItem(type) {
+            let name, qty = 1, rate = 0, total = 0, display = "";
+            let inputs = [];
+
+            if (type === 'work') {
+                const sHR = parseNumberField('startHR');
+                const eHR = parseNumberField('endHR');
+                rate = parseNumberField('workRate');
+
+                if (isNaN(sHR) || isNaN(eHR) || isNaN(rate)) {
+                    Swal.fire('अवैध मूल्य', 'कृपया संख्यात्मक HR आणि दर शुद्धरित्या टाइप करा.', 'warning');
+                    return;
+                }
+                if (rate <= 0) { Swal.fire('अवैध मूल्य', 'दर शून्य किंवा ऋणात्मक असू शकत नाही.', 'warning'); return; }
+                if (eHR <= sHR) {
+                    Swal.fire('त्रुटी!', 'एन्ड HR रीडिंग स्टार्ट HR पेक्षा जास्त असणे आवश्यक आहे.', 'error');
+                    return;
+                }
+                
+                const selectedWorkType = document.getElementById('workType').value;
+                if (selectedWorkType === 'इतर') {
+                    const customWork = document.getElementById('customWorkType').value.trim();
+                    if (!customWork) {
+                        Swal.fire('माहिती आवश्यक', 'कृपया इतर कामाचे नाव भरा.', 'warning');
+                        return;
+                    }
+                    name = customWork;
+                } else {
+                    name = selectedWorkType;
+                }
+                qty = eHR - sHR;
+                total = qty * rate;
+                display = `${name} (${sHR} ते ${eHR} HR = ${qty.toFixed(2)} तास)`;
+                inputs = ['startHR', 'endHR', 'workRate', 'customWorkType'];
+                document.getElementById('startHR').value = eHR;
+                document.getElementById('endHR').value = "";
+            } else if (type === 'labour') {
+                name = document.getElementById('labourTask').value || "मजुरी";
+                qty = parseNumberField('labourCount');
+                rate = parseNumberField('labourRate');
+                
+                if (isNaN(qty) || isNaN(rate)) {
+                    Swal.fire('अवैध मूल्य', 'कृपया मजूर संख्या आणि दर संख्यात्मक स्वरूपात टाका.', 'warning');
+                    return;
+                }
+                if (qty <= 0 || rate <= 0) { Swal.fire('अवैध मूल्य', 'मजूर संख्या आणि दर शून्य किंवा ऋणात्मक असू शकत नाही.', 'warning'); return; }
+                
+                total = qty * rate;
+                display = `${name} (${qty} मजूर)`;
+                inputs = ['labourTask', 'labourCount'];
+            } else if (type === 'income') {
+                name = document.getElementById('iName').value;
+                qty = parseNumberField('iQty');
+                rate = parseNumberField('iRate');
+                
+                if (isNaN(qty) || isNaN(rate)) {
+                    Swal.fire('अवैध मूल्य', 'कृपया प्रमाण आणि दर संख्यात्मक स्वरूपात टाका.', 'warning');
+                    return;
+                }
+                if(!name || qty <= 0 || rate <= 0) { Swal.fire('अवैध मूल्य', 'प्रमाण आणि दर शून्य किंवा ऋणात्मक असू शकत नाही.', 'warning'); return; }
+                
+                total = qty * rate;
+                display = `${name} (${qty} x ₹${rate})`;
+                inputs = ['iName', 'iQty', 'iRate'];
+            } else {
+                const pre = type === 'seed' ? 's' : (type === 'fert' ? 'f' : 'm');
+                name = document.getElementById(pre + 'Name').value;
+                qty = parseNumberField(pre + 'Qty');
+                const unit = document.getElementById(pre + 'Unit').value || 'एकक';
+                rate = parseNumberField(pre + 'Rate');
+                
+                if (isNaN(qty) || isNaN(rate)) {
+                    Swal.fire('अवैध मूल्य', 'कृपया प्रमाण आणि दर संख्यात्मक स्वरूपात टाका.', 'warning');
+                    return;
+                }
+                if(!name || qty <= 0 || rate <= 0) { Swal.fire('अवैध मूल्य', 'प्रमाण आणि दर शून्य किंवा ऋणात्मक असू शकत नाही.', 'warning'); return; }
+                
+                total = qty * rate;
+                display = `${name} (${qty} ${unit} x ₹${rate})`;
+                inputs = [pre + 'Name', pre + 'Qty', pre + 'Unit', pre + 'Rate'];
+            }
+
+            if (!name || total === 0) { Swal.fire('माहिती अपूर्ण', 'माहिती पूर्ण भरा!', 'warning'); return; }
+
+            lists[type].push({ id: Date.now(), name: display, total, qty });
+            inputs.forEach(id => document.getElementById(id).value = "");
+            
+            renderList(type);
+            updateCalculations();
+            
+            // Show small success toast
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'नोंद जोडली' });
+        }
+
+        function renderList(type) {
+            const container = document.getElementById(type + 'List');
+            let sum = 0;
+            let htmlContent = '';
+            
+            lists[type].forEach(item => {
+                sum += item.total;
+                htmlContent += `
+                <div class="flex justify-between items-center bg-white p-2.5 mb-1.5 rounded-lg border border-gray-100 shadow-sm border-l-4 border-l-emerald-500 group transition hover:bg-gray-50">
+                    <span class="text-gray-700 font-medium truncate pr-2">${escapeHTML(item.name)}</span>
+                    <span class="font-bold flex items-center whitespace-nowrap">₹${item.total.toLocaleString('en-IN')} 
+                        <button data-action="remove-item" data-type="${type}" data-id="${item.id}" class="ml-3 text-gray-300 hover:text-red-500 focus:outline-none transition-colors"><i class="fa-solid fa-circle-xmark text-lg"></i></button>
+                    </span>
+                </div>`;
+            });
+            container.innerHTML = htmlContent;
+            document.getElementById(type + 'GrantTotal').innerText = "₹ " + sum.toLocaleString('en-IN');
+        }
+
+        function removeItem(type, id) {
+            lists[type] = lists[type].filter(i => i.id !== id);
+            renderList(type);
+            updateCalculations();
+        }
+
+        // ========== Diesel Logging System ==========
+        let dieselEntries = [];
+        let dieselDb = null;
+
+        async function initDieselDB() {
+            if (!('indexedDB' in window)) {
+                console.warn('IndexedDB is not supported');
+                return;
+            }
+
+            if (!dbPromise) {
+                await initOfflineDB();
+            }
+
+            dieselDb = await dbPromise;
+            await loadDieselHistory();
+        }
+
+        async function loadDieselHistory() {
+            if (!dbPromise) {
+                await initOfflineDB();
+                if (!dbPromise) return;
+            }
+
+            const db = await dbPromise;
+            dieselEntries = (await db.getAll(DIESEL_STORE) || []).sort((a, b) => b.id - a.id);
+            renderDieselList();
+            updateDieselStats();
+        }
+
+        async function addDieselEntry() {
+            const litersInput = document.getElementById('dieselLiters').value.trim();
+            const rateInput = document.getElementById('dieselRate').value.trim();
+            const startHRInput = document.getElementById('dieselStartHR').value.trim();
+            const endHRInput = document.getElementById('dieselEndHR').value.trim();
+            
+            // Validation: Check all fields are filled
+            if (!litersInput || !rateInput || !startHRInput || !endHRInput) {
+                Swal.fire('माहिती अपूर्ण', 'कृपया सर्व फील्ड भरा (लिटर, दर, स्टार्ट HR, एन्ड HR).', 'warning');
+                return;
+            }
+            
+            const liters = parseFloat(litersInput);
+            const rate = parseFloat(rateInput);
+            const startHR = parseFloat(startHRInput);
+            const endHR = parseFloat(endHRInput);
+            
+            // Validation: Check if values are valid numbers
+            if (isNaN(liters) || isNaN(rate) || isNaN(startHR) || isNaN(endHR)) {
+                Swal.fire('अवैध मूल्य', 'कृपया संख्यात्मक मूल्य टाका.', 'warning');
+                return;
+            }
+            
+            // Validation: Check liters and rate are positive
+            if (liters <= 0 || rate <= 0) {
+                Swal.fire('अवैध मूल्य', 'लिटर आणि दर शून्य पेक्षा अधिक असावेत.', 'warning');
+                return;
+            }
+
+            // Validation: एन्ड HR हा स्टार्ट HR पेक्षा कमी नसावा
+            if (endHR < startHR) {
+                Swal.fire('अवैध मूल्य', 'एन्ड HR (अंतिम तास) हा स्टार्ट HR पेक्षा कमी असू शकत नाही.', 'warning');
+                return;
+            }
+
+            const hoursRun = endHR - startHR;
+            const totalCost = liters * rate;
+
+            const entry = {
+                id: Date.now(),
+                liters: liters,
+                rate: rate,
+                totalCost: totalCost,
+                startHR: startHR,
+                endHR: endHR,
+                hoursRun: hoursRun,
+                timestamp: new Date().toLocaleString('mr-IN')
+            };
+
+            const db = await dbPromise;
+            await db.put(DIESEL_STORE, entry);
+            await loadDieselHistory();
+
+            // Clear inputs
+            document.getElementById('dieselLiters').value = '';
+            document.getElementById('dieselRate').value = '';
+            document.getElementById('dieselStartHR').value = endHR;
+            document.getElementById('dieselEndHR').value = '';
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'डिझेल नोंद जोडली!' });
+        }
+
+        function renderDieselList() {
+            const container = document.getElementById('dieselList');
+            let htmlContent = '';
+
+            dieselEntries.slice(0, 10).forEach(entry => {
+                htmlContent += `
+                <div class="flex justify-between items-center bg-orange-50 p-2 rounded-lg border border-orange-100 text-xs">
+                    <span class="text-orange-800">${escapeHTML(entry.liters.toString())}लि @ ₹${escapeHTML(entry.rate.toString())} | ${escapeHTML(entry.hoursRun.toFixed(2))}तास</span>
+                    <span class="font-bold text-orange-700">₹${escapeHTML(entry.totalCost.toLocaleString('en-IN'))}
+                        <button data-action="delete-diesel" data-id="${entry.id}" class="ml-2 text-orange-400 hover:text-red-500"><i class="fa-solid fa-circle-xmark"></i></button>
+                    </span>
+                </div>`;
+            });
+            container.innerHTML = htmlContent;
+        }
+
+        function updateDieselStats() {
+            const totalLiters = dieselEntries.reduce((s, e) => s + e.liters, 0);
+            const totalHours = dieselEntries.reduce((s, e) => s + e.hoursRun, 0);
+            const totalCost = dieselEntries.reduce((s, e) => s + e.totalCost, 0);
+
+            document.getElementById('totalDieselLiters').innerText = totalLiters.toFixed(2);
+            document.getElementById('totalDieselHours').innerText = totalHours.toFixed(2);
+            document.getElementById('totalDieselCost').innerText = totalCost.toLocaleString('en-IN');
+            document.getElementById('dieselTotal').innerText = "₹" + totalCost.toLocaleString('en-IN');
+
+            // Calculate efficiency (liters per hour)
+            let efficiency = '--';
+            if (totalHours > 0) {
+                const lph = totalLiters / totalHours;
+                efficiency = lph.toFixed(2) + ' लि/तास';
+            }
+            document.getElementById('avgFuelConsumption').innerText = efficiency;
+            document.getElementById('efficiencyDisplay').innerText = efficiency;
+        }
+
+        async function deleteDieselEntry(id) {
+            const db = await dbPromise;
+            await db.delete(DIESEL_STORE, id);
+            await loadDieselHistory();
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Toast.fire({ icon: 'success', title: 'डिझेल नोंद हटवली' });
+        }
+
+        function clearDieselHistory() {
+            Swal.fire({
+                title: 'डिझेल इतिहास क्लिअर करायचा?',
+                text: 'सर्व डिझेल नोंदी हटवल्या जातील!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f97316',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'होय, क्लिअर करा',
+                cancelButtonText: 'रद्द करा'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    const db = await dbPromise;
+                    await db.clear(DIESEL_STORE);
+                    await loadDieselHistory();
+                    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                    Toast.fire({ icon: 'success', title: 'इतिहास क्लिअर झाला!' });
+                }
+            });
+        }
+
+        function clearFormFields() {
+            // Clear all input and select fields efficiently
+            const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], input[type="datetime-local"], select');
+            inputs.forEach(input => {
+                if (input.id === 'workType') {
+                    input.value = 'नांगरणी';
+                } else if (input.type === 'text' || input.type === 'number' || input.type === 'date' || input.type === 'datetime-local') {
+                    input.value = '';
+                }
+            });
+            
+            document.getElementById('customWorkWrapper').classList.add('hidden');
+            
+            lists = { seed: [], fert: [], med: [], work: [], labour: [], income: [] };
+            Object.keys(lists).forEach(type => renderList(type));
+            
+            editingRecordId = null;
+            document.getElementById('saveBtnText').innerText = 'डेटा सेव्ह करा';
+            updateCalculations();
+            setNow();
+            document.getElementById('photoPreview').innerHTML = '';
+        }
+
+        function toggleCustomWorkField() {
+            const workType = document.getElementById('workType').value;
+            const wrapper = document.getElementById('customWorkWrapper');
+            const customInput = document.getElementById('customWorkType');
+            if (workType === 'इतर') {
+                wrapper.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                wrapper.classList.add('hidden');
+                customInput.value = '';
+            }
+        }
+
+        function updateCalculations() {
+            let expTotal = 0;
+            let incListTotal = 0;
+            
+            Object.keys(lists).forEach(key => {
+                let sum = lists[key].reduce((s, i) => s + i.total, 0);
+                if (key === 'income') {
+                    incListTotal += sum;
+                } else {
+                    expTotal += sum;
+                }
+            });
+
+            const trans = parseFloat(document.getElementById('transCost').value) || 0;
+            expTotal += trans;
+
+            if (lists.income.length > 0) {
+                document.getElementById('totalIncome').value = incListTotal;
+            }
+
+            const incTotal = parseFloat(document.getElementById('totalIncome').value) || 0;
+            
+            document.getElementById('finalExp').innerText = expTotal.toLocaleString('en-IN');
+            document.getElementById('finalIncTotal').innerText = incTotal.toLocaleString('en-IN');
+            
+            const pl = incTotal - expTotal;
+            const disp = document.getElementById('finalPLDisplay');
+            disp.innerText = "₹ " + pl.toLocaleString('en-IN');
+            disp.className = pl >= 0 ? "text-3xl font-black tracking-tight text-emerald-400" : "text-3xl font-black tracking-tight text-red-400";
+        }
+
+        function getDetailSegment(details, label) {
+            if (!details || !details.includes(label)) return '';
+            return details.split(label)[1].split('|')[0].trim();
+        }
+
+        function parseDetailItems(segment, type) {
+            if (!segment) return [];
+            return segment.split(',').map(item => item.trim()).filter(Boolean).map((raw, index) => {
+                let display = raw;
+                let total = 0;
+                let qty = 0;
+
+                const totalMatch = raw.match(/=\s*₹\s*([0-9,]+(?:\.[0-9]+)?)/);
+                if (totalMatch) {
+                    total = parseFloat(totalMatch[1].replace(/,/g, '')) || 0;
+                    display = raw.split(/=\s*₹\s*/)[0].trim();
+                }
+
+                if (!total) {
+                    const amountMatch = raw.match(/([0-9.,]+)\s*x\s*₹\s*([0-9.,]+)/);
+                    if (amountMatch) {
+                        qty = parseFloat(amountMatch[1].replace(/,/g, '')) || 0;
+                        const rate = parseFloat(amountMatch[2].replace(/,/g, '')) || 0;
+                        total = qty * rate;
+                    }
+                }
+
+                if (!qty) {
+                    const qtyMatch = raw.match(/([0-9.,]+)\s*(?:तास|मजूर|kg|किलो|लिटर|लिटर|एकक|x)/);
+                    if (qtyMatch) {
+                        qty = parseFloat(qtyMatch[1].replace(/,/g, '')) || 0;
+                    }
+                }
+
+                if (!total && type === 'income') {
+                    const amountMatch = raw.match(/\(\s*([0-9.,]+)\s*x\s*₹\s*([0-9.,]+)\s*\)/);
+                    if (amountMatch) {
+                        qty = parseFloat(amountMatch[1].replace(/,/g, '')) || 0;
+                        const rate = parseFloat(amountMatch[2].replace(/,/g, '')) || 0;
+                        total = qty * rate;
+                    }
+                }
+
+                return {
+                    id: Date.now() + index,
+                    name: display,
+                    total,
+                    qty
+                };
+            });
+        }
+
+        function parseDetailsToLists(details) {
+            const parsed = { seed: [], fert: [], med: [], work: [], labour: [], income: [] };
+            parsed.seed = parseDetailItems(getDetailSegment(details, 'बियाणे:'), 'seed');
+            parsed.fert = parseDetailItems(getDetailSegment(details, 'खत:'), 'fert');
+            parsed.med = parseDetailItems(getDetailSegment(details, 'औषधे:'), 'med');
+            parsed.work = parseDetailItems(getDetailSegment(details, 'यंत्र:'), 'work');
+            parsed.labour = parseDetailItems(getDetailSegment(details, 'मजुरी:'), 'labour');
+            parsed.income = parseDetailItems(getDetailSegment(details, 'उत्पन्न:'), 'income');
+            return parsed;
+        }
+
+        function editRecord(recordId) {
+            const record = records.find(item => item.id === recordId);
+            if (!record) {
+                Swal.fire('माहिती सापडली नाही', 'निवडलेल्या नोंदीची माहिती सापडली नाही.', 'error');
+                return;
+            }
+
+            document.getElementById('farmName').value = record.farm || '';
+            document.getElementById('cropName').value = record.crop || '';
+
+            if (record.date) {
+                const dateObj = new Date(record.date);
+                if (!isNaN(dateObj)) {
+                    const offset = dateObj.getTimezoneOffset() * 60000;
+                    document.getElementById('manualDateTime').value = new Date(dateObj - offset).toISOString().slice(0, 16);
+                }
+            }
+
+            document.getElementById('totalIncome').value = record.inc || '';
+
+            const transMatch = record.details.match(/इतर खर्च:\s*₹\s*([0-9]+(?:\.[0-9]+)?)/);
+            document.getElementById('transCost').value = transMatch ? transMatch[1] : '';
+
+            lists = { seed: [], fert: [], med: [], work: [], labour: [], income: [] };
+            const parsedLists = parseDetailsToLists(record.details);
+            Object.assign(lists, parsedLists);
+            Object.keys(lists).forEach(type => renderList(type));
+
+            editingRecordId = recordId;
+            document.getElementById('saveBtnText').innerText = 'अपडेट करा';
+
+            updateCalculations();
+
+            Swal.fire({
+                icon: 'info',
+                title: 'नोंद फॉर्ममध्ये भरली',
+                text: 'ही नोंद आता फॉर्ममध्ये उपलब्ध आहे. तुम्ही आवश्यक बदल करून सेव्ह करू शकता.',
+                timer: 2200,
+                showConfirmButton: false
+            });
+        }
+
+        async function saveRecord() {
+            const farm = document.getElementById('farmName').value.trim();
+            const crop = document.getElementById('cropName').value.trim() || 'लागू नाही';
+            
+            if (!farm) { 
+                Swal.fire('माहिती आवश्यक', 'शेतकरी / शेताचे नाव आवश्यक आहे!', 'error'); 
+                return; 
+            }
+
+            const exp = parseFloat(document.getElementById('finalExp').innerText.replace(/,/g, '')) || 0;
+            const inc = parseFloat(document.getElementById('finalIncTotal').innerText.replace(/,/g, '')) || 0;
+
+            if(exp === 0 && inc === 0) {
+                Swal.fire('रक्कम आवश्यक', 'कोणतीही नोंद केलेली नाही. कृपया खर्च किंवा उत्पन्न टाका.', 'warning');
+                return;
+            }
+
+            let details = [];
+            if(lists.seed.length) details.push("बियाणे: " + lists.seed.map(i=>`${i.name} = ₹${i.total.toLocaleString('en-IN')}`).join(", "));
+            if(lists.fert.length) details.push("खत: " + lists.fert.map(i=>`${i.name} = ₹${i.total.toLocaleString('en-IN')}`).join(", "));
+            if(lists.med.length) details.push("औषधे: " + lists.med.map(i=>`${i.name} = ₹${i.total.toLocaleString('en-IN')}`).join(", "));
+            if(lists.work.length) details.push("यंत्र: " + lists.work.map(i=>`${i.name} = ₹${i.total.toLocaleString('en-IN')}`).join(", "));
+            if(lists.labour.length) details.push("मजुरी: " + lists.labour.map(i=>`${i.name} = ₹${i.total.toLocaleString('en-IN')}`).join(", "));
+            if(lists.income.length) details.push("उत्पन्न: " + lists.income.map(i=>`${i.name} = ₹${i.total.toLocaleString('en-IN')}`).join(", "));
+            if(document.getElementById('transCost').value) details.push("इतर खर्च: ₹" + document.getElementById('transCost').value);
+
+            const recordId = editingRecordId || generateUUID();
+            const newRecord = { 
+                action: editingRecordId ? "update" : "add",
+                id: recordId,
+                farm, crop, 
+                date: document.getElementById('manualDateTime').value, 
+                exp, inc, 
+                pl: inc - exp, 
+                details: details.join(" | ") || "कोणताही तपशील नाही",
+                timestamp: new Date().toISOString()
+            };
+
+            const btn = document.getElementById('saveBtn');
+            const btnText = document.getElementById('saveBtnText');
+            const originalText = btnText.innerText;
+            
+            try {
+                btnText.innerText = "सेव्ह होत आहे..."; 
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+                
+                // Try to save online
+               if (navigator.onLine) {
+    const response = await fetch(SCRIPT_URL, { 
+        method: "POST", 
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(newRecord) 
+    });
+    
+    await assertOkResponse(response);
+    const result = await response.json();
+                    
+                    if (result.success || result.status === "success") {
+                        const existingIndex = records.findIndex(r => r.id === recordId);
+                        const updatedRecord = {
+                            id: recordId,
+                            date: newRecord.date,
+                            farm: farm,
+                            crop: crop,
+                            exp: exp,
+                            inc: inc,
+                            pl: newRecord.pl,
+                            details: newRecord.details
+                        };
+                        if (existingIndex !== -1) {
+                            records[existingIndex] = updatedRecord;
+                        } else {
+                            records.push(updatedRecord);
+                        }
+                        
+                        await Swal.fire({
+                            icon: 'success',
+                            title: editingRecordId ? 'अपडेट पूर्ण झाले!' : 'यशस्वी!',
+                            text: editingRecordId ? 'नोंद यशस्वीरित्या अपडेट झाली.' : 'नोंद डेटाबेसमध्ये यशस्वीरित्या सेव्ह झाली.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        throw new Error(result.message || "अज्ञात त्रुटी");
+                    }
+                } else {
+                    // Offline: Save to IndexedDB
+                    await saveOfflineRecord(newRecord);
+                    
+                    const existingIndex = records.findIndex(r => r.id === recordId);
+                    const updatedRecord = {
+                        id: recordId,
+                        date: newRecord.date,
+                        farm: farm,
+                        crop: crop,
+                        exp: exp,
+                        inc: inc,
+                        pl: newRecord.pl,
+                        details: newRecord.details
+                    };
+                    if (existingIndex !== -1) {
+                        records[existingIndex] = updatedRecord;
+                    } else {
+                        records.push(updatedRecord);
+                    }
+                    
+                    await Swal.fire({
+                        icon: 'info',
+                        title: 'ऑफलाइन मोड',
+                        html: '<div class="text-left text-sm"><p class="mb-2">🌐 इंटरनेट कनेक्शन नाही!</p><p>नोंद स्थानिक संचयनमध्ये सेव्ह झाली आहे.</p><p class="text-xs text-slate-500 mt-2">नेटवर्क मिळताच आपोआप क्लाउडवर अपलोड होईल.</p></div>',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                }
+                
+                // Clear form and update UI without reload
+                clearFormFields();
+                renderHistory();
+                renderCharts();
+                generateInsights();
+                updateAutoSuggestions();
+            } catch (e) {
+                // Fallback: Save offline even on error
+                await saveOfflineRecord(newRecord);
+                Swal.fire('ऑफलाइन संचयन', 'नोंद स्थानिक संचयनात जतन झाली आहे. नेटवर्क नंतर मिळताच ती अपलोड होईल.', 'info');
+            } finally {
+                editingRecordId = null;
+                btn.disabled = false; 
+                btnText.innerText = originalText;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                document.getElementById('saveBtnText').innerText = 'डेटा सेव्ह करा';
+            }
+        }
+
+        async function deleteRecord(event, recordId, date, farm) {
+            let btn = null;
+            const result = await Swal.fire({
+                title: 'खात्री आहे का?',
+                html: `तारीख: <b>${new Date(date).toLocaleDateString('mr-IN')}</b><br>शेतकरी: <b>${farm}</b><br><br>ही नोंद कायमची हटवायची आहे का?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="fa-solid fa-trash"></i> होय, हटवा!',
+                cancelButtonText: 'रद्द करा'
+            });
+
+            if (!result.isConfirmed) return;
+
+            try {
+                btn = event.target.closest('button');
+                const origHtml = btn ? btn.innerHTML : '';
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                    btn.disabled = true;
+                }
+
+                const response = await fetch(SCRIPT_URL, { 
+                    method: "POST", 
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8"
+                    },
+                    body: JSON.stringify({ action: "delete", id: recordId }) 
+                });
+                
+                await assertOkResponse(response);
+                
+                const result = await response.json();
+                
+                if (result.success || result.status === "success") {
+                    // Remove from local array instead of reloading
+                    records = records.filter(r => r.id !== recordId);
+                    
+                    await Swal.fire({
+                        icon: 'success', 
+                        title: 'हटवले!', 
+                        text: 'नोंद कायमची हटवण्यात आली आहे.', 
+                        timer: 1500, 
+                        showConfirmButton: false
+                    });
+                    
+                    // Update UI without reload
+                    renderHistory();
+                    renderCharts();
+                    generateInsights();
+                } else {
+                    throw new Error(result.message || "हटवण्यात अपयश");
+                }
+            } catch (e) {
+                Swal.fire('त्रुटी', "हटवताना अडचण: " + (e.message || e), 'error');
+                if (btn) {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        async function loadDataFromSheet() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            if (loadingSpinner) {
+                loadingSpinner.classList.remove('hidden');
+            }
+            
+            try {
+                const response = await fetch(SCRIPT_URL);
+                await assertOkResponse(response);
+                const data = await response.json();
+
+                records = data.map(row => ({
+                    id: row[7] || generateUUID(), // Expecting ID in column 7 (index 7)
+                    date: row[0], 
+                    farm: row[1], 
+                    crop: row[2],
+                    exp: parseFloat(row[3]) || 0, 
+                    inc: parseFloat(row[4]) || 0,
+                    pl: parseFloat(row[5]) || 0, 
+                    details: row[6] || ""
+                }));
+
+                updateAutoSuggestions();
+                renderHistory();
+                renderCharts();
+                generateInsights();
+                
+                // Hide loading spinner after successful load
+                if (loadingSpinner) {
+                    loadingSpinner.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Load Error", e);
+                const errorMessage = getFriendlyNetworkMessage(e);
+                document.getElementById('historyBody').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">डेटा लोड करण्यात त्रुटी: ${errorMessage}</td></tr>`;
+                
+                // Hide loading spinner after error
+                if (loadingSpinner) {
+                    loadingSpinner.classList.add('hidden');
+                }
+            }
+        }
+
+        function updateAutoSuggestions() {
+            const farms = [...new Set(records.map(r => r.farm))].filter(Boolean);
+            const crops = [...new Set(records.map(r => r.crop))].filter(Boolean);
+            
+            // Extract seed, fertilizer and medicine names from details
+            const seeds = new Set();
+            const ferts = new Set();
+            const meds = new Set();
+            
+            records.forEach(r => {
+                const details = r.details;
+                if (details.includes('बियाणे:')) {
+                    const seedPart = details.split('बियाणे:')[1].split('|')[0];
+                    seedPart.split(',').forEach(s => {
+                        const name = s.trim().split(' (')[0];
+                        if (name) seeds.add(name);
+                    });
+                }
+                if (details.includes('खत:')) {
+                    const fertPart = details.split('खत:')[1].split('|')[0];
+                    fertPart.split(',').forEach(f => {
+                        const name = f.trim().split(' (')[0];
+                        if (name) ferts.add(name);
+                    });
+                }
+                if (details.includes('औषधे:')) {
+                    const medPart = details.split('औषधे:')[1].split('|')[0];
+                    medPart.split(',').forEach(m => {
+                        const name = m.trim().split(' (')[0];
+                        if (name) meds.add(name);
+                    });
+                }
+            });
+            
+            document.getElementById('farmSuggestions').innerHTML = farms.map(f => `<option value="${f}">`).join("");
+            document.getElementById('cropSuggestions').innerHTML = crops.map(c => `<option value="${c}">`).join("");
+            document.getElementById('seedSuggestions').innerHTML = [...seeds].map(s => `<option value="${s}">`).join("");
+            document.getElementById('fertSuggestions').innerHTML = [...ferts].map(f => `<option value="${f}">`).join("");
+            document.getElementById('medSuggestions').innerHTML = [...meds].map(m => `<option value="${m}">`).join("");
+            document.getElementById('filterSuggestions').innerHTML = farms.map(f => `<option value="${f}">`).join("") + crops.map(c => `<option value="${c}">`).join("");
+        }
+
+        function renderHistory() {
+            try {
+                const filter = (document.getElementById('filterFarm').value || '').toLowerCase();
+                const body = document.getElementById('historyBody');
+                const cardContainer = document.getElementById('historyCardContainer');
+                
+                if (!body || !cardContainer) {
+                    console.error('Required DOM elements not found');
+                    return;
+                }
+                
+                let bodyHtml = '';
+                let cardHtml = '';
+                let tInc = 0, tExp = 0;
+
+                if(!records || records.length === 0) {
+                    const emptyMessage = `<div class="p-8 text-center text-gray-500">कोणताही डेटा उपलब्ध नाही. नवीन नोंद तयार करा.</div>`;
+                    body.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">कोणताही डेटा उपलब्ध नाही. नवीन नोंद तयार करा.</td></tr>`;
+                    cardContainer.innerHTML = emptyMessage;
+                    document.getElementById('totalAllIncome').innerText = '0';
+                    document.getElementById('totalAllExp').innerText = '0';
+                    document.getElementById('totalAllProfit').innerText = '0';
+                    return;
+                }
+
+                // Create sorted copy without modifying original array
+                const reversedRecords = records.slice().reverse();
+                let count = 0;
+
+            reversedRecords.forEach((r) => {
+                const farmText = (r.farm || '').toLowerCase();
+                const cropText = (r.crop || '').toLowerCase();
+                if (!filter || farmText.includes(filter) || cropText.includes(filter)) {
+                    count++;
+                    tInc += r.inc; tExp += r.exp;
+                    
+                    const formattedDate = new Date(r.date).toLocaleDateString('mr-IN', {day:'2-digit', month:'short', year:'numeric'});
+                    const escapedCrop = escapeHTML(r.crop || 'अज्ञात');
+                    const escapedFarm = escapeHTML(r.farm || 'अज्ञात');
+                    const escapedDetails = escapeHTML(r.details || 'कोणताही तपशील नाही');
+                    const safeId = escapeHTML(r.id);
+                    const safeDate = escapeHTML(r.date);
+                    
+                    bodyHtml += `<tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-4 align-top">
+                            <span class="font-bold text-slate-800 text-sm block mb-1">${escapedCrop}</span>
+                            <span class="inline-block bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold mr-1">${escapedFarm}</span>
+                            <span class="inline-block text-slate-400 text-[10px]"><i class="fa-regular fa-calendar mr-1"></i>${formattedDate}</span>
+                        </td>
+                        <td class="p-4 text-xs text-slate-600 max-w-xs break-words leading-relaxed">${escapedDetails}</td>
+                        <td class="p-4 text-right text-red-500 font-bold bg-red-50/30">₹${(r.exp || 0).toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-right text-emerald-600 font-bold bg-emerald-50/30">₹${(r.inc || 0).toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-right font-black text-lg ${(r.pl || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}">₹${(r.pl || 0).toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-center no-print align-middle flex justify-center items-center gap-2">
+                            <button data-action="edit-record" data-id="${safeId}" class="bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-800 p-2 rounded-lg transition-all shadow-sm" title="एडिट करा" aria-label="नोंद एडिट करा">
+                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                            </button>
+                            <button data-action="delete-record" data-id="${safeId}" data-date="${safeDate}" data-farm="${escapedFarm.replace(/"/g, '&quot;')}" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-lg transition-all shadow-sm" title="डिलीट करा" aria-label="नोंद हटवा">
+                                <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+
+                    cardHtml += `
+                        <div class="bg-white p-4 rounded-3xl border border-gray-200 shadow-sm">
+                            <div class="flex items-start justify-between gap-4 mb-3">
+                                <div>
+                                    <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">${formattedDate}</div>
+                                    <h3 class="text-base font-bold text-slate-900 mb-1">${escapedCrop}</h3>
+                                    <div class="text-sm text-slate-600">${escapedFarm}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs font-semibold ${(r.pl || 0) >= 0 ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'} inline-flex items-center px-2 py-1 rounded-full">${(r.pl || 0) >= 0 ? 'नफा' : 'तोटा'}</div>
+                                    <div class="mt-2 text-lg font-black ${(r.pl || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}">₹${(r.pl || 0).toLocaleString('en-IN')}</div>
+                                </div>
+                            </div>
+                            <div class="text-sm text-slate-600 mb-4 break-words">${escapedDetails}</div>
+                            <div class="grid grid-cols-4 gap-2 text-[11px]">
+                                <span class="bg-red-50 text-red-600 px-2 py-2 rounded-xl text-center">खर्च ₹${(r.exp || 0).toLocaleString('en-IN')}</span>
+                                <span class="bg-emerald-50 text-emerald-600 px-2 py-2 rounded-xl text-center">उत्पन्न ₹${(r.inc || 0).toLocaleString('en-IN')}</span>
+                                <button data-action="edit-record" data-id="${safeId}" class="bg-amber-50 hover:bg-amber-100 text-amber-600 px-2 py-2 rounded-xl transition" title="नोंद एडिट करा">एडिट</button>
+                                <button data-action="delete-record" data-id="${safeId}" data-date="${safeDate}" data-farm="${escapedFarm.replace(/"/g, '&quot;')}" class="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-2 rounded-xl transition" title="नोंद हटवा">डिलीट</button>
+                            </div>
+                        </div>`;
+                }
+            });
+
+            if(count === 0 && filter) {
+                const noResult = `<div class="p-8 text-center text-slate-500">तुमच्या शोधाशी मिळतीजुळती कोणतीही नोंद सापडली नाही.</div>`;
+                bodyHtml = '';
+                cardHtml = noResult;
+            }
+
+            body.innerHTML = bodyHtml || `<tr><td colspan="6" class="p-8 text-center text-gray-500">कोणताही डेटा उपलब्ध नाही.</td></tr>`;
+                cardContainer.innerHTML = cardHtml;
+                
+                const incomeEl = document.getElementById('totalAllIncome');
+                const expenseEl = document.getElementById('totalAllExp');
+                const profitEl = document.getElementById('totalAllProfit');
+                
+                if (incomeEl) incomeEl.innerText = tInc.toLocaleString('en-IN');
+                if (expenseEl) expenseEl.innerText = tExp.toLocaleString('en-IN');
+                if (profitEl) profitEl.innerText = (tInc - tExp).toLocaleString('en-IN');
+            } catch (error) {
+                console.error('Error rendering history:', error);
+                Swal.fire('त्रुटी', 'इतिहास प्रदर्शित करताना अडचण: ' + (error.message || error), 'error');
+            }
+        }
+
+        async function resetForm() {
+            const result = await Swal.fire({
+                title: 'फॉर्म क्लिअर करायचा?',
+                text: "तुमची भरलेली सर्व तात्पुरती माहिती नष्ट होईल.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'होय, क्लिअर करा',
+                cancelButtonText: 'रद्द करा'
+            });
+            if(result.isConfirmed) {
+                clearFormFields();
+
+                // Clear all lists
+                lists = { seed: [], fert: [], med: [], work: [], labour: [], income: [] };
+                
+                // Re-render lists and calculations
+                Object.keys(lists).forEach(type => {
+                    renderList(type);
+                });
+                
+                updateCalculations();
+                setNow();
+                
+                // Clear photo preview
+                document.getElementById('photoPreview').innerHTML = '';
+                
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                Toast.fire({ icon: 'success', title: 'फॉर्म साफ झाला!' });
+            }
+        }
+
+        // --- NEW PRO FEATURE: EXPORT TO CSV ---
+        function exportToCSV() {
+            if(records.length === 0) {
+                Swal.fire('माहिती नाही', 'डाउनलोड करण्यासाठी कोणतीही नोंद उपलब्ध नाही.', 'info');
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Added BOM for Marathi font support in Excel
+            csvContent += "तारीख,शेतकरी,पीक,एकूण खर्च (Rs),एकूण उत्पन्न (Rs),निव्वळ नफा/तोटा (Rs),तपशील\n";
+            
+            records.forEach(r => {
+                const dateStr = new Date(r.date).toLocaleDateString('mr-IN');
+                // Escape commas in details field by wrapping in quotes
+                const safeDetails = `"${r.details.replace(/"/g, '""')}"`;
+                let row = `${dateStr},${r.farm},${r.crop},${r.exp},${r.inc},${r.pl},${safeDetails}`;
+                csvContent += row + "\n";
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Sheti_Diary_Pro_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Toast.fire({ icon: 'success', title: 'CSV फाईल डाउनलोड झाली!' });
+        }
+
+        // जर तुम्ही Noto Sans Marathi TTF फॉन्ट Base64 स्वरूपात Embed करू इच्छित असाल,
+        // तर या स्ट्रिंगला वैध Base64 डेटाने भरा. नसेल तर ./libs/NotoSansMarathi-Regular.ttf वरून लोड होईल.
+        const NOTO_SANS_MARATHI_TTF_BASE64 = '';
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+            }
+            return btoa(binary);
+        }
+
+        async function loadBase64FontData(fontPath) {
+            const response = await fetch(fontPath);
+            if (!response.ok) {
+                throw new Error(`Font फाईल लोड करण्यात अयश: ${response.status}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            return arrayBufferToBase64(arrayBuffer);
+        }
+
+        async function ensureNotoSansMarathiFont(doc) {
+            const fontName = 'NotoSansMarathi';
+            try {
+                if (typeof doc.addFileToVFS === 'function' && typeof doc.addFont === 'function') {
+                    if (NOTO_SANS_MARATHI_TTF_BASE64) {
+                        doc.addFileToVFS('NotoSansMarathi-Regular.ttf', NOTO_SANS_MARATHI_TTF_BASE64);
+                        doc.addFont('NotoSansMarathi-Regular.ttf', fontName, 'normal');
+                        doc.setFont(fontName);
+                        return;
+                    }
+
+                    const fontBase64 = await loadBase64FontData('./libs/NotoSansMarathi-Regular.ttf');
+                    doc.addFileToVFS('NotoSansMarathi-Regular.ttf', fontBase64);
+                    doc.addFont('NotoSansMarathi-Regular.ttf', fontName, 'normal');
+                    doc.setFont(fontName);
+                }
+            } catch (error) {
+                console.warn('Noto Sans Marathi jsPDF फॉन्ट लोड करू शकत नाही:', error);
+            }
+        }
+
+        async function exportToPDF() {
+            if(records.length === 0) {
+                Swal.fire('माहिती नाही', 'PDF तयार करण्यासाठी कोणतीही नोंद उपलब्ध नाही.', 'info');
+                return;
+            }
+
+            const tableWrapper = document.getElementById('historyTableWrapper');
+            if (!tableWrapper) {
+                Swal.fire('त्रुटी', 'PDF तयार करण्यासाठी टेबल विभाग सापडला नाही.', 'error');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 10;
+
+            await ensureNotoSansMarathiFont(doc);
+
+            const loadingToast = Swal.fire({
+                title: 'PDF तयार करत आहे...',
+                html: 'कृपया थोडावेळ प्रतीक्षा करा.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            let originalStyles = {
+                display: tableWrapper.style.display,
+                position: tableWrapper.style.position,
+                left: tableWrapper.style.left,
+                top: tableWrapper.style.top,
+                visibility: tableWrapper.style.visibility
+            };
+            const hadHiddenClass = tableWrapper.classList.contains('hidden');
+
+            try {
+                if (hadHiddenClass) {
+                    tableWrapper.classList.remove('hidden');
+                }
+                tableWrapper.style.position = 'absolute';
+                tableWrapper.style.left = '-9999px';
+                tableWrapper.style.top = '-9999px';
+                tableWrapper.style.display = 'block';
+                tableWrapper.style.visibility = 'visible';
+
+                const canvas = await html2canvas(tableWrapper, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgProps = doc.getImageProperties(imgData);
+                const pdfWidth = pageWidth - margin * 2;
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                const headerHeight = 15;
+                const usableHeight = pageHeight - margin - headerHeight;
+
+                doc.text('माझी शेती डायरी प्रो - रिपोर्ट', margin, margin + 5);
+                doc.addImage(imgData, 'PNG', margin, margin + headerHeight, pdfWidth, pdfHeight);
+
+                let heightLeft = pdfHeight - usableHeight;
+                while (heightLeft > 0) {
+                    doc.addPage();
+                    const positionY = margin - (pdfHeight - heightLeft) + headerHeight;
+                    doc.addImage(imgData, 'PNG', margin, positionY, pdfWidth, pdfHeight);
+                    heightLeft -= usableHeight;
+                }
+
+                doc.save(`Sheti_Diary_Pro_${new Date().toISOString().slice(0,10)}.pdf`);
+
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                Toast.fire({ icon: 'success', title: 'PDF रिपोर्ट डाउनलोड झाला!' });
+            } catch (error) {
+                Swal.fire('त्रुटी', 'PDF तयार करण्यात अडचण: ' + (error.message || error), 'error');
+            } finally {
+                if (hadHiddenClass) {
+                    tableWrapper.classList.add('hidden');
+                }
+                tableWrapper.style.display = originalStyles.display;
+                tableWrapper.style.position = originalStyles.position;
+                tableWrapper.style.left = originalStyles.left;
+                tableWrapper.style.top = originalStyles.top;
+                tableWrapper.style.visibility = originalStyles.visibility;
+                Swal.close();
+            }
+        }
+
+        function renderCharts() {
+            try {
+                if (expenseChartInstance) {
+                    expenseChartInstance.destroy();
+                    expenseChartInstance = null;
+                }
+                if (profitChartInstance) {
+                    profitChartInstance.destroy();
+                    profitChartInstance = null;
+                }
+                if (!records || records.length === 0) return;
+
+                // Expense Breakdown Chart - Fixed categorization
+                const ctx1 = document.getElementById('expenseChart');
+                if (!ctx1) return;
+                
+                const expenseData = records.reduce((acc, r) => {
+                    // Parse details to categorize expenses
+                    const details = (r.details || '').toLowerCase();
+                    if (details.includes('बियाणे')) acc.seed += (r.exp || 0);
+                    if (details.includes('खत')) acc.fert += (r.exp || 0);
+                    if (details.includes('औषधे')) acc.med += (r.exp || 0);
+                    if (details.includes('यंत्र')) acc.work += (r.exp || 0);
+                    if (details.includes('मजुरी')) acc.labour += (r.exp || 0);
+                    if (!details.includes('बियाणे') && !details.includes('खत') && !details.includes('औषधे') && !details.includes('यंत्र') && !details.includes('मजुरी')) {
+                        acc.other += (r.exp || 0);
+                    }
+                    return acc;
+                }, { seed: 0, fert: 0, med: 0, work: 0, labour: 0, other: 0 });
+                
+                const ctx1Context = ctx1.getContext('2d');
+
+                expenseChartInstance = new Chart(ctx1Context, {
+                type: 'pie',
+                data: {
+                    labels: ['बियाणे', 'खते', 'औषधे', 'यंत्र काम', 'मजुरी', 'इतर'],
+                    datasets: [{
+                        data: [expenseData.seed, expenseData.fert, expenseData.med, expenseData.work, expenseData.labour, expenseData.other],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+                // Profit Trend Chart - without modifying original array
+                const ctx2 = document.getElementById('profitChart');
+                if (!ctx2) return;
+                
+                const sortedRecords = records.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+                const labels = sortedRecords.map(r => new Date(r.date).toLocaleDateString('mr-IN', { month: 'short', day: 'numeric' }));
+                const profits = sortedRecords.map(r => r.pl || 0);
+
+                const ctx2Context = ctx2.getContext('2d');
+                profitChartInstance = new Chart(ctx2Context, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'निव्वळ नफा/तोटा (₹)',
+                        data: profits,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+            } catch (error) {
+                console.error('Error rendering charts:', error);
+            }
+        }
+
+        function generateInsights() {
+            try {
+                if (!records || records.length === 0) {
+                    document.getElementById('insights').innerText = 'पुरेशा नोंदी नसल्याने सूचना उपलब्ध नाहीत.';
+                    return;
+                }
+
+                let insights = [];
+
+                const totalExp = records.reduce((s, r) => s + (r.exp || 0), 0);
+                const totalInc = records.reduce((s, r) => s + (r.inc || 0), 0);
+                const avgProfit = records.reduce((s, r) => s + (r.pl || 0), 0) / records.length;
+
+                if (avgProfit > 0) {
+                    insights.push('तुमचा सरासरी नफा चांगला आहे. उत्पादन वाढवण्यासाठी गुंतवणूक वाढवण्याचा विचार करा.');
+                } else {
+                    insights.push('तुम्हाला तोटा होत आहे. खर्च कमी करण्यासाठी किंवा उत्पन्न वाढवण्यासाठी धोरणे वापरा.');
+                }
+
+                const recentRecords = records.slice(-5);
+                const recentAvgExp = recentRecords.reduce((s, r) => s + (r.exp || 0), 0) / recentRecords.length;
+                if (recentAvgExp > totalExp / records.length) {
+                    insights.push('तुमचे अलीकडचे खर्च वाढले आहेत. बजेट नियंत्रण करा.');
+                }
+
+                const insightsEl = document.getElementById('insights');
+                if (insightsEl) {
+                    insightsEl.innerText = insights.join(' ');
+                }
+            } catch (error) {
+                console.error('Error generating insights:', error);
+                const insightsEl = document.getElementById('insights');
+                if (insightsEl) {
+                    insightsEl.innerText = 'सूचना तयार करताना अडचण आली.';
+                }
+            }
+        }
+
+
+        // ========== Photo Functions ==========
+        let photoHistory = [];
+        let photoDb = null;
+
+        function openPhotoDB() {
+            return new Promise((resolve, reject) => {
+                if (!('indexedDB' in window)) {
+                    reject(new Error('IndexedDB is not supported in this browser.'));
+                    return;
+                }
+
+                const request = indexedDB.open('shetiDiaryPhotos', 1);
+
+                request.onupgradeneeded = function(event) {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('photos')) {
+                        db.createObjectStore('photos', { keyPath: 'id' });
+                    }
+                };
+
+                request.onsuccess = function(event) {
+                    photoDb = event.target.result;
+                    resolve(photoDb);
+                };
+
+                request.onerror = function(event) {
+                    reject(event.target.error || new Error('IndexedDB खोलण्यात अडचण.'));
+                };
+            });
+        }
+
+        async function initPhotoDB() {
+            try {
+                await openPhotoDB();
+                await loadPhotoHistory();
+            } catch (error) {
+                console.error('Photo DB error:', error);
+                Swal.fire('त्रुटी', 'फोटो संग्रहण सुरू करताना अडचण आली: ' + (error.message || error), 'error');
+            }
+        }
+
+        function loadPhotoHistory() {
+            return new Promise((resolve, reject) => {
+                if (!photoDb) {
+                    resolve([]);
+                    return;
+                }
+
+                const transaction = photoDb.transaction('photos', 'readonly');
+                const store = transaction.objectStore('photos');
+                const request = store.getAll();
+
+                request.onsuccess = function(event) {
+                    photoHistory = (event.target.result || []).sort((a, b) => b.id - a.id);
+                    renderPhotoHistory();
+                    resolve(photoHistory);
+                };
+
+                request.onerror = function(event) {
+                    reject(event.target.error || new Error('फोटो इतिहास लोड करण्यात अडचण.'));
+                };
+            });
+        }
+
+        function storePhoto(photoEntry) {
+            return new Promise((resolve, reject) => {
+                if (!photoDb) {
+                    reject(new Error('Photo database is not initialized.'));
+                    return;
+                }
+
+                const transaction = photoDb.transaction('photos', 'readwrite');
+                const store = transaction.objectStore('photos');
+                const request = store.put(photoEntry);
+
+                request.onsuccess = function() {
+                    resolve(photoEntry);
+                };
+
+                request.onerror = function(event) {
+                    reject(event.target.error || new Error('फोटो सेव्ह करताना अडचण.'));
+                };
+            });
+        }
+
+        function deletePhotoFromDB(photoId) {
+            return new Promise((resolve, reject) => {
+                if (!photoDb) {
+                    reject(new Error('Photo database is not initialized.'));
+                    return;
+                }
+
+                const transaction = photoDb.transaction('photos', 'readwrite');
+                const store = transaction.objectStore('photos');
+                const request = store.delete(photoId);
+
+                request.onsuccess = function() {
+                    resolve();
+                };
+
+                request.onerror = function(event) {
+                    reject(event.target.error || new Error('फोटो हटवताना अडचण.'));
+                };
+            });
+        }
+
+        async function savePhotoToHistory(imageData, source) {
+            const timestamp = new Date().toLocaleString('mr-IN');
+            const farm = document.getElementById('farmName').value || 'अज्ञात';
+            const crop = document.getElementById('cropName').value || 'अज्ञात';
+            
+            const photoEntry = {
+                id: Date.now(),
+                image: imageData,
+                source: source,
+                farm: farm,
+                crop: crop,
+                timestamp: timestamp
+            };
+
+            try {
+                await storePhoto(photoEntry);
+                await loadPhotoHistory();
+            } catch (error) {
+                console.error('Save photo failed:', error);
+                Swal.fire('त्रुटी', 'फोटो सेव्ह करताना अडचण: ' + (error.message || error), 'error');
+            }
+        }
+
+        function renderPhotoHistory() {
+            const container = document.getElementById('photoHistoryContainer');
+            const previewContainer = document.getElementById('photoPreview');
+            
+            if (photoHistory.length === 0) {
+                container.innerHTML = '<p class="col-span-2 text-center text-slate-500 text-sm">अद्याप कोणताही फोटो नाही</p>';
+                previewContainer.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = '';
+            previewContainer.innerHTML = '';
+            
+            photoHistory.slice(0, 6).forEach((photo) => {
+                const thumbDiv = document.createElement('div');
+                thumbDiv.className = 'relative group cursor-pointer rounded-lg overflow-hidden border-2 border-pink-200 hover:border-pink-500 transition-all';
+                thumbDiv.innerHTML = `
+                    <img src="${photo.image}" class="w-full h-20 object-cover" alt="Photo">
+                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                        <button data-action="view-photo" data-photo-id="${photo.id}" class="text-white text-xs bg-pink-600 px-2 py-1 rounded hover:bg-pink-700">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(thumbDiv);
+            });
+        }
+
+        function viewPhotoDetails(photoId) {
+            const photo = photoHistory.find(p => p.id === photoId);
+            if (!photo) return;
+
+            Swal.fire({
+                title: 'फोटो तपशील',
+                html: `
+                    <img src="${photo.image}" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="text-align: left; font-size: 13px;">
+                        <p><strong>स्रोत:</strong> ${photo.source}</p>
+                        <p><strong>शेतकरी:</strong> ${photo.farm}</p>
+                        <p><strong>पीक:</strong> ${photo.crop}</p>
+                        <p><strong>वेळ:</strong> ${photo.timestamp}</p>
+                    </div>
+                `,
+                showDenyButton: true,
+                confirmButtonText: 'डाउनलोड',
+                denyButtonText: 'डिलीट करा',
+                cancelButtonText: 'बंद करा',
+                showCancelButton: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    downloadPhoto(photo);
+                } else if (result.isDenied) {
+                    deletePhoto(photoId);
+                }
+            });
+        }
+
+        function downloadPhoto(photo) {
+            const link = document.createElement('a');
+            link.href = photo.image;
+            link.download = `sheti_photo_${photo.id}_${new Date().toISOString().slice(0,10)}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Toast.fire({ icon: 'success', title: 'फोटो डाउनलोड झाला!' });
+        }
+
+        async function deletePhoto(photoId) {
+            try {
+                await deletePhotoFromDB(photoId);
+                await loadPhotoHistory();
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                Toast.fire({ icon: 'success', title: 'फोटो डिलीट झाला!' });
+            } catch (error) {
+                console.error('Delete photo failed:', error);
+                Swal.fire('त्रुटी', 'फोटो हटवताना अडचण: ' + (error.message || error), 'error');
+            }
+        }
+
+        // ========== Gallery Image Upload Function ==========
+        async function uploadPhotoFromGallery(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                Swal.fire('त्रुटी', 'कृपया फक्त इमेज फाईल निवडा!', 'error');
+                return;
+            }
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Toast.fire({ icon: 'info', title: 'फोटो कॉम्प्रेस केला जात आहे...' });
+
+            try {
+                const imageData = await compressImage(file);
+                await savePhotoToHistory(imageData, 'गॅलरी');
+                Toast.fire({ icon: 'success', title: 'फोटो गॅलरीतून जोडला!' });
+            } catch (error) {
+                console.error('Image compression failed:', error);
+                Swal.fire('त्रुटी', 'फोटो प्रोसेस करताना अडचण आली. कृपया पुन्हा प्रयत्न करा.', 'error');
+            }
+
+            event.target.value = '';
+        }
+    </script>
+    <script>
+        let deferredInstallPrompt = null;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', function (event) {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            if (installBtn) {
+                installBtn.classList.remove('hidden');
+            }
+            console.log('PWA install prompt available');
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredInstallPrompt) return;
+                installBtn.disabled = true;
+                deferredInstallPrompt.prompt();
+                const choiceResult = await deferredInstallPrompt.userChoice;
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the PWA install prompt');
+                } else {
+                    console.log('User dismissed the PWA install prompt');
+                }
+                deferredInstallPrompt = null;
+                installBtn.classList.add('hidden');
+                installBtn.disabled = false;
+            });
+        }
+
+        window.addEventListener('appinstalled', function () {
+            console.log('PWA installed successfully');
+            if (installBtn) {
+                installBtn.classList.add('hidden');
+            }
+        });
+
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker यशस्वीरित्या रजिस्टर झाला! Scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker रजिस्ट्रेशन फेल झाले:', error);
+                    });
+            });
+        }
+    </script>
+    <script>
+        (function(){
+            const logo = document.getElementById('logoImg');
+            if(!logo) return;
+            const status = document.createElement('div');
+            status.id = 'logoStatus';
+            status.style.cssText = 'font-size:12px;font-weight:700;margin-top:6px';
+            logo.parentNode.appendChild(status);
+
+            let logoStatusChecked = false;
+
+            function show(msg, color){
+                status.textContent = msg;
+                status.style.color = color || '#fff';
+                console.log('Logo status:', msg);
+            }
+
+            logo.addEventListener('load', function(){
+                logoStatusChecked = true;
+                show('Logo loaded: ' + logo.src, '#9AE6B4');
+            });
+
+            logo.addEventListener('error', function(){
+                logoStatusChecked = true;
+                show('Logo failed to load: ' + logo.src, '#FCA5A5');
+            });
+
+            // Quick check if already cached
+            if(logo.complete && logo.naturalWidth){
+                logoStatusChecked = true;
+                show('Logo already loaded (cached): ' + logo.src, '#9AE6B4');
+            }
+
+            // Allow more time on slower mobile devices before showing the warning
+            setTimeout(function(){
+                if (!logoStatusChecked && (!logo.complete || !logo.naturalWidth)) {
+                    show('Logo not loaded — check path/network and press Ctrl+F5', '#FEEBC8');
+                }
+            }, 5000);
+        })();
+    </script>
+</body>
+</html>
