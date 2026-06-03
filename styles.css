@@ -1,0 +1,96 @@
+/* Application custom styles moved from index.html */
+body { font-family: 'Noto Sans Marathi', sans-serif; background-color: #f8fafc; color: #1e293b; }
+.card {
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 4px 15px -3px rgb(0 0 0 / 0.05);
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+.card:hover { box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1); transform: translateY(-2px); }
+.input-field {
+    border: 1.5px solid #cbd5e1;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.5rem;
+    width: 100%;
+    outline: none;
+    transition: 0.2s;
+    font-size: 14px;
+    background-color: #fdfdfd;
+}
+.input-field:focus { border-color: #059669; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); background-color: #ffffff; }
+.invalid-input { border-color: #f87171 !important; box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.2); }
+.dark-input:focus { border-color: #34d399; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.15); }
+
+/* Custom Scrollbar for tables */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+@media print {
+    body { background: white; }
+    .card { box-shadow: none; border: 1px solid #ddd; transform: none !important; }
+    .no-print { display: none !important; }
+}
+
+/* Loading Spinner Styles */
+#loadingSpinner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+}
+#loadingSpinner.hidden { display: none; }
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid #e2e8f0;
+    border-top: 5px solid #059669;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.spinner-text {
+    margin-top: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #059669;
+    text-align: center;
+}
+
+.spinner-subtext {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+/* Cropper.js Custom Styles */
+.cropper-container { max-height: 400px; }
+.cropper-crop-box,
+.cropper-modal { opacity: 0.5; }
+.cropper-center-indicator,
+.cropper-face,
+.cropper-line,
+.cropper-point { background-color: #06b6d4; }
+.cropper-bg { background-image: none; }
+.cropper-point {
+    width: 8px;
+    height: 8px;
+    background-color: #0891b2;
+    box-shadow: 0 0 4px #06b6d4;
+}
+.cropper-line { background-color: rgba(6, 182, 212, 0.6); }

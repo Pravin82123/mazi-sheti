@@ -1,0 +1,555 @@
+﻿<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>माझी शेती - प्रगत डायरी (प्रो)</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-title" content="माझी शेती">
+    <link rel="icon" type="image/png" href="./icon-192x192.png">
+    <link rel="apple-touch-icon" href="./icon-192x192.png">
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Marathi:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- jsPDF, html2canvas, Compressor, Tesseract will be loaded lazily when needed -->
+    <!-- Cropper.js for Image Cropping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="p-2 md:p-6 lg:p-10">
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="hidden">
+        <div class="spinner"></div>
+        <div class="spinner-text">डेटा लोड होत आहे...</div>
+        <div class="spinner-subtext">कृपया प्रतीक्षा करा...</div>
+    </div>
+
+    <!-- ARIA live region for screen reader announcements -->
+    <div id="ariaLiveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Backup Reminder Notification -->
+    <div id="backupReminder" class="hidden fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg shadow-lg p-4 z-50 animate-pulse">
+        <div class="flex items-start gap-3">
+            <i class="fa-solid fa-cloud-arrow-up text-yellow-600 text-xl mt-1 flex-shrink-0"></i>
+            <div class="flex-1">
+                <h3 class="font-bold text-yellow-800 text-sm">सिंक होणे बाकी आहे</h3>
+                <p class="text-yellow-700 text-xs mt-1"><span id="pendingRecordsCount">0</span> रेकॉर्ड्स ऑफलाइन सेव झाले आहेत. इंटरनेट जोडल्यावर ते स्वयंचलित सिंक होतील.</p>
+            </div>
+            <button type="button" id="backupReminderClose" class="text-yellow-600 hover:text-yellow-800 flex-shrink-0 mt-1">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="appContent" class="">
+        <div class="max-w-7xl mx-auto">
+            <header class="bg-gradient-to-r from-emerald-900 to-emerald-700 text-white p-6 rounded-2xl shadow-xl mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <h1 class="text-2xl lg:text-3xl font-black flex items-center justify-center md:justify-start tracking-wide">
+                    <img id="logoImg" src="./image_0.png" alt="माझी शेती लोगो" class="w-12 h-12 md:w-10 md:h-10 mr-3 rounded-lg border border-emerald-400 shadow-sm object-cover flex-shrink-0" loading="eager" aria-hidden="false">
+                    माझी शेती डायरी 
+                    <span class="ml-2 text-xs bg-amber-500 text-white px-2 py-1 rounded-md uppercase tracking-wider font-bold">Pro</span>
+                </h1>
+                <p class="text-emerald-100 opacity-90 text-sm mt-1">प्रगत हिशोब आणि यंत्र व्यवस्थापन प्रणाली</p>
+            </div>
+            <div class="flex flex-col items-center md:items-end gap-3 w-full md:w-auto">
+                <div id="networkStatus" class="bg-black/20 px-4 py-2 rounded-xl font-mono text-sm border border-emerald-600/50 shadow-inner w-full md:w-auto text-center">
+                    <span class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full font-bold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> तपासत आहे...</span>
+                </div>
+                <button id="installBtn" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-opacity shadow-md no-print">
+                    <i class="fa-solid fa-download mr-1"></i> अॅप इन्स्टॉल करा
+                </button>
+                <div id="clockDisplay" class="bg-black/20 px-4 py-2 rounded-xl font-mono text-sm border border-emerald-600/50 shadow-inner w-full md:w-auto text-center">लोड होत आहे...</div>
+                <div class="flex gap-2 w-full md:w-auto justify-center">
+                    <button type="button" id="exportCsvBtn" class="no-print flex-1 md:flex-none text-xs bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition-all shadow-md font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-csv"></i> CSV डाउनलोड
+                    </button>
+                    <button type="button" id="exportPdfBtn" class="no-print flex-1 md:flex-none text-xs bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg transition-all shadow-md font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> PDF रिपोर्ट
+                    </button>
+                    <button type="button" id="printBtn" class="no-print flex-1 md:flex-none text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-all border border-white/20 font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-print"></i> रिपोर्ट प्रिंट
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 space-y-6 no-print">
+                
+                <form class="card border-t-4 border-emerald-600 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-5"><i class="fa-solid fa-seedling text-8xl"></i></div>
+                    <h2 class="text-lg font-bold text-emerald-900 mb-4 flex items-center"><i class="fa-solid fa-map-location-dot mr-2 text-emerald-600"></i> १. मूलभूत माहिती</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                        <div>
+                            <label for="farmName" class="text-xs font-bold text-slate-700">शेतकरी / शेताचे नाव</label>
+                            <input type="text" id="farmName" list="farmSuggestions" class="input-field mt-1" placeholder="शेतकरी / शेताचे नाव" required>
+                            <datalist id="farmSuggestions"></datalist>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="cropName" list="cropSuggestions" class="input-field flex-1" placeholder="पिकाचे नाव (वैकल्पिक)">
+                            <datalist id="cropSuggestions"></datalist>
+                            <button type="button" id="setCropNAButton" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-bold transition-colors" title="लागू नाही निवडा">
+                                <i class="fa-solid fa-ban"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+
+
+                <!-- Photo Capture Card -->
+                <div class="card border-t-4 border-pink-500 bg-gradient-to-r from-pink-50 to-rose-50">
+                    <h3 class="font-bold text-pink-900 mb-4 flex items-center"><i class="fa-solid fa-camera mr-2 text-pink-600"></i> शेतातील फोटो / स्क्रीनशॉट</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-3 mb-4">
+                        <button type="button" id="galleryButton" class="bg-indigo-600 text-white py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-image"></i> गॅलरी
+                        </button>
+                    </div>
+                    <input type="file" id="photoUpload" accept="image/*" class="hidden">
+                    <canvas id="photoCanvas" class="hidden"></canvas>
+                    <div id="photoPreview" class="mt-3"></div>
+                </div>
+
+                <!-- OCR Receipt Scanner Card -->
+                <div class="card border-t-4 border-cyan-500 bg-gradient-to-r from-cyan-50 to-blue-50 no-print">
+                    <h3 class="font-bold text-cyan-900 mb-4 flex items-center"><i class="fa-solid fa-receipt text-cyan-600 mr-2"></i> पावती/बिल स्कॅन (OCR)</h3>
+                    <p class="text-xs text-cyan-700 mb-4"><i class="fa-solid fa-lightbulb mr-1"></i> खते, औषधे किंवा बियाण्याच्या पावतीचा फोटो काढा. रक्कम आपोआप वाचली जाईल.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <button type="button" id="ocrScanButton" class="bg-cyan-600 text-white py-2.5 rounded-lg font-bold hover:bg-cyan-700 transition-all shadow-md shadow-cyan-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-barcode"></i> पावती स्कॅन करा
+                        </button>
+                        <button type="button" id="ocrCameraButton" class="bg-teal-600 text-white py-2.5 rounded-lg font-bold hover:bg-teal-700 transition-all shadow-md shadow-teal-600/30 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera"></i> कॅमेरा वापरा
+                        </button>
+                    </div>
+
+                    <input type="file" id="ocrReceiptUpload" accept="image/*" class="hidden">
+                    <div id="ocrPreview" class="mt-3 hidden">
+                        <div class="bg-white p-3 rounded-lg border border-cyan-200">
+                            <p class="text-xs font-bold text-cyan-700 mb-2">✂️ आवश्यक भाग क्रॉप करा (ड्रॅग करून निवडा):</p>
+                            <div id="cropperContainer" style="max-height: 400px; overflow: hidden; border: 2px solid #06b6d4; border-radius: 8px;">
+                                <img id="ocrImage" src="" alt="OCR Preview" style="max-width: 100%; display: block;">
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-3">
+                                <button type="button" id="ocrRotateBtn" class="bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-rotate-right"></i> फिरवा
+                                </button>
+                                <button type="button" id="ocrResetCropBtn" class="bg-slate-400 hover:bg-slate-500 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-redo"></i> रीसेट
+                                </button>
+                                <button type="button" id="ocrCropConfirmBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-check"></i> क्रॉप करा
+                                </button>
+                            </div>
+                            <button type="button" id="ocrSkipCropBtn" class="w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-lg text-xs font-bold transition-colors">
+                                <i class="fa-solid fa-forward"></i> संपूर्ण फोटो वापरा
+                            </button>
+                            <p class="text-[10px] text-gray-500 mt-2 text-center">💡 पावतीचा भाग निवडा. शिरोबिंदूंना ड्रॅग करून आकार बदलू शकता.</p>
+                        </div>
+                    </div>
+
+                    <div id="ocrProcessing" class="hidden mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                        <div class="flex items-center mb-3">
+                            <div class="w-5 h-5 rounded-full border-2 border-cyan-600 border-t-cyan-200 animate-spin mr-3"></div>
+                            <span class="font-bold text-cyan-900">OCR प्रक्रिया चलू आहे...</span>
+                        </div>
+                        <div class="w-full bg-cyan-100 rounded-full h-2 overflow-hidden">
+                            <div id="ocrProgress" class="bg-cyan-600 h-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <p id="ocrStatus" class="text-xs text-cyan-700 mt-2 text-center">तैयारी...</p>
+                    </div>
+
+                    <div id="ocrResults" class="hidden mt-4 space-y-3">
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                            <p class="text-xs font-bold text-emerald-700 mb-2">📋 ओळखलेला मजकूर:</p>
+                            <div id="ocrText" class="text-sm bg-white p-2 rounded border border-emerald-100 max-h-32 overflow-y-auto text-gray-700" style="font-family: monospace;"></div>
+                        </div>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p class="text-xs font-bold text-blue-700 mb-2">💰 सापडलेली रक्कम (₹):</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <div class="space-y-1.5" id="ocrAmounts"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <p class="text-xs font-bold text-purple-700 mb-2">🔧 कोणत्या क्षेत्रात भरायचे?</p>
+                            <select id="ocrFieldSelect" class="input-field text-sm mb-2">
+                                <option value="">-- निवडा --</option>
+                                <option value="seed">बियाणे</option>
+                                <option value="fert">खते</option>
+                                <option value="med">औषधे</option>
+                                <option value="labour">मजुरी दर</option>
+                                <option value="work">यंत्र दर</option>
+                                <option value="manual">हाताने टाइप करा</option>
+                            </select>
+                            <button type="button" id="ocrAutoFillBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg text-sm font-bold transition-colors shadow-sm">
+                                <i class="fa-solid fa-check-double mr-1"></i> निवडलेल्या क्षेत्रात भरा
+                            </button>
+                        </div>
+
+                        <button type="button" id="ocrClearBtn" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg text-sm font-bold transition-colors">
+                            <i class="fa-solid fa-xmark mr-1"></i> परिणाम क्लिअर करा
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form class="card border-t-4 border-amber-500">
+                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                            <h3 class="font-bold text-amber-800"><i class="fa-solid fa-gears mr-1"></i> २. यंत्र काम</h3>
+                            <span class="text-sm font-black bg-amber-100 text-amber-700 px-2 py-1 rounded" id="workGrantTotal">₹ 0</span>
+                        </div>
+                        <select id="workType" class="input-field mb-3" required>
+                            <option value="नांगरणी">नांगरणी</option>
+                            <option value="रोटव्हेटर">रोटव्हेटर</option>
+                            <option value="पेरणी">पेरणी</option>
+                            <option value="बळी">बळी</option>
+                            <option value="सऱ्या पाडणे">सऱ्या पाडणे</option>
+                            <option value="फणपाळी">फणपाळी</option>
+                            <option value="इतर">इतर</option>
+                        </select>
+                        <div id="customWorkWrapper" class="hidden mb-3">
+                            <input type="text" id="customWorkType" class="input-field" placeholder="इतर कामाचे नाव लिहा">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">प्रमाण</label>
+                                <input type="number" id="workQty" min="0" step="0.01" inputmode="decimal" class="input-field mt-1" placeholder="पांड / गुंठा" required>
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">एकक</label>
+                                <select id="workUnit" class="input-field mt-1" required>
+                                    <option value="पांड">पांड</option>
+                                    <option value="गुंठा">गुंठा</option>
+                                    <option value="एकक">एकक</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="number" id="workRate" min="0" inputmode="decimal" class="input-field mb-3" placeholder="दर (₹ प्रति एकक)" required>
+                        <button type="button" id="addWorkBtn" class="w-full bg-amber-500 text-white py-2.5 rounded-lg font-bold hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/30"><i class="fa-solid fa-plus mr-1"></i> जोडा</button>
+                        <div id="workList" class="mt-4 space-y-2 text-xs"></div>
+                    </form>
+
+                    <form class="card border-t-4 border-blue-500">
+                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                            <h3 class="font-bold text-blue-800"><i class="fa-solid fa-users mr-1"></i> ३. मजुरी</h3>
+                            <span class="text-sm font-black bg-blue-100 text-blue-700 px-2 py-1 rounded" id="labourGrantTotal">₹ 0</span>
+                        </div>
+                        <input type="text" id="labourTask" class="input-field mb-3" placeholder="कामाचे स्वरूप (उदा. कापणी)" required>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">मजूर संख्या</label>
+                                <input type="number" id="labourCount" min="0" inputmode="decimal" class="input-field mt-1" placeholder="0" required>
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">रोज (₹)</label>
+                                <input type="number" id="labourRate" min="0" inputmode="decimal" class="input-field mt-1" placeholder="0" required>
+                            </div>
+                        </div>
+                        <button type="button" id="addLabourBtn" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/30"><i class="fa-solid fa-plus mr-1"></i> जोडा</button>
+                        <div id="labourList" class="mt-4 space-y-2 text-xs"></div>
+                    </form>
+                </div>
+
+                <div class="card border-t-4 border-purple-600">
+                    <h3 class="font-bold text-purple-800 mb-4 flex items-center"><i class="fa-solid fa-flask text-purple-600 mr-2"></i> ४. बियाणे, खते व औषधे</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div class="bg-purple-50/50 p-4 rounded-xl border border-purple-100 transition hover:border-purple-300">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-purple-800 border-b border-purple-100 pb-1"><span>बियाणे</span><span id="seedGrantTotal" class="bg-purple-200 px-1.5 rounded">₹0</span></div>
+                            <input type="text" id="sName" list="seedSuggestions" class="input-field mb-2 text-sm h-10" placeholder="नाव / प्रकार" required>
+                        <datalist id="seedSuggestions"></datalist>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <input type="number" id="sQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण" required>
+                                <select id="sUnit" class="input-field text-sm h-10" required>
+                                    <option value="">एका एककात</option>
+                                    <option value="नग">नग</option>
+                                    <option value="किग्र">किग्र</option>
+                                    <option value="बॅग">बॅग</option>
+                                    <option value="पाकीट">पाकीट</option>
+                                    <option value="लिटर">लिटर</option>
+                                </select>
+                                <input type="number" id="sRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addSeedBtn" class="w-full bg-purple-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-purple-700 shadow-sm shadow-purple-600/30">जोडा</button>
+                            <div id="seedList" class="mt-3 text-xs space-y-1.5"></div>
+                        </div>
+                        <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 transition hover:border-emerald-300">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-emerald-800 border-b border-emerald-100 pb-1"><span>खते</span><span id="fertGrantTotal" class="bg-emerald-200 px-1.5 rounded">₹0</span></div>
+                            <input type="text" id="fName" list="fertSuggestions" class="input-field mb-2 text-sm h-10" placeholder="नाव / ग्रेड" required>
+                        <datalist id="fertSuggestions"></datalist>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <input type="number" id="fQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण" required>
+                                <select id="fUnit" class="input-field text-sm h-10" required>
+                                    <option value="">एका एककात</option>
+                                    <option value="नग">नग</option>
+                                    <option value="किग्र">किग्र</option>
+                                    <option value="बॅग">बॅग</option>
+                                    <option value="पाकीट">पाकीट</option>
+                                    <option value="लिटर">लिटर</option>
+                                </select>
+                                <input type="number" id="fRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addFertBtn" class="w-full bg-emerald-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/30">जोडा</button>
+                            <div id="fertList" class="mt-3 text-xs space-y-1.5"></div>
+                        </div>
+                        <div class="bg-pink-50/50 p-4 rounded-xl border border-pink-100 transition hover:border-pink-300">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-pink-800 border-b border-pink-100 pb-1"><span>औषधे</span><span id="medGrantTotal" class="bg-pink-200 px-1.5 rounded">₹0</span></div>
+                            <input type="text" id="mName" list="medSuggestions" class="input-field mb-2 text-sm h-10" placeholder="औषधाचे नाव" required>
+                        <datalist id="medSuggestions"></datalist>
+                            <div class="grid grid-cols-3 gap-2 mb-3">
+                                <input type="number" id="mQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण" required>
+                                <select id="mUnit" class="input-field text-sm h-10" required>
+                                    <option value="">एका एककात</option>
+                                    <option value="नग">नग</option>
+                                    <option value="किग्र">किग्र</option>
+                                    <option value="बॅग">बॅग</option>
+                                    <option value="पाकीट">पाकीट</option>
+                                    <option value="लिटर">लिटर</option>
+                                </select>
+                                <input type="number" id="mRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addMedBtn" class="w-full bg-pink-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-pink-700 shadow-sm shadow-pink-600/30">जोडा</button>
+                            <div id="medList" class="mt-3 text-xs space-y-1.5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-t-4 border-teal-500 mt-6 bg-teal-50/30">
+                    <h3 class="font-bold text-teal-900 mb-4 flex items-center"><i class="fa-solid fa-sack-dollar text-teal-600 mr-2"></i> ५. उत्पन्न / पिकाची विक्री</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form class="bg-white p-4 rounded-xl border border-teal-200 shadow-sm">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-teal-800 border-b border-teal-100 pb-2">
+                                <span>विक्री नोंद</span><span id="incomeGrantTotal" class="bg-teal-100 px-2 py-0.5 rounded text-teal-900">₹0</span>
+                            </div>
+                            <input type="text" id="iName" class="input-field mb-2 text-sm h-10" placeholder="तपशील (उदा. सोयाबीन विक्री)" required>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <input type="number" id="iQty" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="प्रमाण (क्विंटल/टन)" required>
+                                <input type="number" id="iRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="दर (₹)" required>
+                            </div>
+                            <button type="button" id="addIncomeBtn" class="w-full bg-teal-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-teal-700 shadow-sm shadow-teal-600/30"><i class="fa-solid fa-plus mr-1"></i> उत्पन्नाची नोंद करा</button>
+                        </form>
+                        <div id="incomeList" class="mt-3 text-xs space-y-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- Diesel Logging Section -->
+                <div class="card border-t-4 border-orange-500 mt-6 bg-orange-50/30">
+                    <h3 class="font-bold text-orange-900 mb-4 flex items-center"><i class="fa-solid fa-gas-pump text-orange-600 mr-2"></i> ६. डिझेल लॉगिंग (इंधन हिशोब)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form class="bg-white p-4 rounded-xl border border-orange-200 shadow-sm">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-orange-800 border-b border-orange-100 pb-2">
+                                <span>इंधन भरणा</span>
+                                <span id="dieselTotal" class="bg-orange-100 px-2 py-0.5 rounded text-orange-900">₹0</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">लिटर</label>
+                                    <input type="number" id="dieselLiters" min="0" step="0.01" inputmode="decimal" class="input-field text-sm h-10" placeholder="0.00" required>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">दर/लि (₹)</label>
+                                    <input type="number" id="dieselRate" min="0" inputmode="decimal" class="input-field text-sm h-10" placeholder="0" required>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">एचआर (स्टार्ट)</label>
+                                    <input type="number" id="dieselStartHR" min="0" step="0.01" inputmode="decimal" class="input-field text-sm h-10" placeholder="0.00" required>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">एचआर (एन्ड)</label>
+                                    <input type="number" id="dieselEndHR" min="0" step="0.01" inputmode="decimal" class="input-field text-sm h-10" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <button type="button" id="addDieselBtn" class="w-full bg-orange-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-orange-700 shadow-sm shadow-orange-600/30"><i class="fa-solid fa-plus mr-1"></i> इंधन भरणा नोंद करा</button>
+                            <div id="dieselList" class="mt-3 text-xs space-y-1.5 max-h-40 overflow-y-auto"></div>
+                        </form>
+                        <div class="bg-white p-4 rounded-xl border border-orange-200 shadow-sm">
+                            <div class="flex justify-between text-sm font-bold mb-3 text-orange-800 border-b border-orange-100 pb-2">
+                                <span>कार्यक्षमता</span>
+                                <span id="efficiencyDisplay" class="bg-orange-200 px-1.5 rounded text-xs">--</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">एकूण भरलेले इंधन:</span>
+                                    <span class="font-bold text-orange-700"><span id="totalDieselLiters">0</span> लि.</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">एकूण तास:</span>
+                                    <span class="font-bold text-orange-700"><span id="totalDieselHours">0</span> तास</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">सरासरी वापर:</span>
+                                    <span class="font-bold text-orange-700"><span id="avgFuelConsumption">--</span></span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-slate-600">एकूण खर्च:</span>
+                                    <span class="font-bold text-red-600">₹ <span id="totalDieselCost">0</span></span>
+                                </div>
+                            </div>
+                            <button type="button" id="clearDieselBtn" class="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-600 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                                <i class="fa-solid fa-trash mr-1"></i> इतिहास क्लिअर करा
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-slate-900 text-white sticky top-6 shadow-2xl rounded-2xl p-6 border border-slate-700">
+                    <h2 class="text-xl font-bold mb-5 text-emerald-400 border-b border-slate-700 pb-3 flex justify-between items-center">
+                        <span>आजचा हिशोब</span>
+                        <i class="fa-solid fa-calculator text-slate-500"></i>
+                    </h2>
+                    <div class="space-y-5 mb-6">
+                        <div>
+                            <label class="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1 block">मुख्य विक्री उत्पन्न</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                <input type="number" id="totalIncome" min="0" inputmode="decimal" class="input-field dark-input bg-slate-800 border-slate-700 text-emerald-400 text-xl font-black pl-8 py-3" placeholder="0.00">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="text-[11px] text-slate-400 uppercase font-bold tracking-wider mb-1 block">इतर खर्च (वाहतूक/हमाली)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                <input type="number" id="transCost" min="0" inputmode="decimal" class="input-field dark-input bg-slate-800 border-slate-700 text-white pl-8" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 space-y-3 shadow-inner">
+                        <div class="flex justify-between text-sm items-center"><span class="text-slate-400">एकूण खर्च:</span><span class="text-red-400 font-bold bg-red-900/20 px-2 py-1 rounded">₹ <span id="finalExp">0</span></span></div>
+                        <div class="flex justify-between text-sm items-center"><span class="text-slate-400">एकूण उत्पन्न:</span><span class="text-emerald-400 font-bold bg-emerald-900/20 px-2 py-1 rounded">₹ <span id="finalIncTotal">0</span></span></div>
+                        <div class="flex justify-between items-end pt-3 border-t border-slate-700 mt-2">
+                            <span class="text-slate-200 font-bold text-sm mb-1">निव्वळ नफा/तोटा:</span>
+                            <span class="text-3xl font-black tracking-tight" id="finalPLDisplay">₹ 0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="my-5 no-print">
+                        <label class="text-[11px] text-slate-400 font-bold uppercase mb-1 block">नोंद तारीख व वेळ निवडा</label>
+                        <input type="datetime-local" id="manualDateTime" class="input-field dark-input bg-slate-800 border-slate-700 text-sm text-white py-2.5">
+                    </div>
+                    
+                    <button type="button" id="saveBtn" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 py-4 rounded-xl font-black text-lg shadow-lg shadow-emerald-600/20 no-print transition-all transform active:scale-95 flex justify-center items-center">
+                        <i class="fa-solid fa-cloud-arrow-up mr-2 text-xl"></i> <span id="saveBtnText">डेटा सेव्ह करा</span>
+                    </button>
+                    <button type="button" id="syncBtn" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 border border-blue-500 py-3 rounded-xl text-sm shadow-md no-print transition-colors font-bold text-white hidden">
+                        <i class="fa-solid fa-arrows-rotate mr-2"></i> <span id="syncBtnText">ऑफलाइन नोंदी सिंक करा</span>
+                    </button>
+                    <button type="button" id="resetBtn" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 py-3 rounded-xl text-sm shadow-md no-print transition-colors font-bold text-slate-300">
+                        <i class="fa-solid fa-rotate-right mr-2"></i> फॉर्म क्लिअर करा
+                    </button>
+                </div>
+
+                <!-- Photo History Sidebar -->
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5 no-print">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-image mr-2 text-pink-600"></i> फोटो इतिहास</h3>
+                    <div id="photoHistoryContainer" class="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                        <p class="col-span-2 text-center text-slate-500 text-sm">अद्याप कोणताही फोटो नाही</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10 mt-10">
+            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200 text-center shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-emerald-200 opacity-50 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                <p class="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-1 relative z-10">सर्वांगीण एकूण उत्पन्न</p>
+                <p class="text-3xl font-black text-emerald-900 relative z-10">₹ <span id="totalAllIncome">0</span></p>
+            </div>
+            <div class="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-2xl border border-red-200 text-center shadow-sm relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-red-200 opacity-50 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                <p class="text-[11px] font-black text-red-600 uppercase tracking-widest mb-1 relative z-10">सर्वांगीण एकूण खर्च</p>
+                <p class="text-3xl font-black text-red-900 relative z-10">₹ <span id="totalAllExp">0</span></p>
+            </div>
+            <div class="bg-slate-900 text-white p-6 rounded-2xl border border-slate-700 text-center shadow-xl relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-slate-700 opacity-50 text-6xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-vault"></i></div>
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 relative z-10">एकूण निव्वळ नफा/तोटा</p>
+                <p class="text-3xl font-black text-emerald-400 relative z-10">₹ <span id="totalAllProfit">0</span></p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-md border border-gray-200 mb-10">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-100 pb-5">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center"><i class="fa-solid fa-clock-rotate-left mr-3 text-blue-500"></i> मागील नोंदी व रिपोर्ट</h2>
+                <div class="flex w-full md:w-auto relative no-print">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                    </div>
+                    <input type="text" id="filterFarm" list="filterSuggestions" class="pl-10 pr-4 py-2.5 border-2 border-gray-200 focus:border-blue-500 rounded-xl text-sm w-full outline-none transition-colors" placeholder="शेतकरी नुसार शोधा...">
+                    <datalist id="filterSuggestions"></datalist>
+                </div>
+            </div>
+
+            <div id="historyTableWrapper" class="overflow-x-auto rounded-xl border border-gray-100 shadow-inner hidden md:block">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider border-b border-gray-200">
+                            <th class="p-4 font-bold">दिनांक / पीक / शेत</th>
+                            <th class="p-4 font-bold">तपशील</th>
+                            <th class="p-4 text-right font-bold">खर्च (₹)</th>
+                            <th class="p-4 text-right font-bold">उत्पन्न (₹)</th>
+                            <th class="p-4 text-right font-black text-slate-800">नफा/तोटा</th>
+                            <th class="p-4 text-center no-print font-bold">कृती</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody" class="text-sm divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i> डेटा लोड होत आहे...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="historyCardContainer" class="space-y-4 md:hidden">
+                <div class="p-6 text-center text-slate-500">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i> डेटा लोड होत आहे...
+                </div>
+            </div>
+            <div id="paginationControls" class="flex justify-center mt-4"></div>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-6 shadow-md border border-gray-200 mb-10">
+            <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center"><i class="fa-solid fa-chart-line mr-3 text-green-500"></i> डेटा विश्लेषण आणि अंतर्दृष्टी</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="font-bold text-slate-800 mb-4">खर्चांचे प्रकार</h3>
+                    <canvas id="expenseChart" width="400" height="300"></canvas>
+                </div>
+                <div class="card">
+                    <h3 class="font-bold text-slate-800 mb-4">नफा/तोटा ट्रेंड</h3>
+                    <canvas id="profitChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-6 mt-6">
+                <div class="card">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-seedling mr-2 text-green-500"></i>बुद्धिमान सूचना</h3>
+                    <p id="insights" class="text-slate-700 text-sm">डेटा लोड होत आहे...</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center text-slate-400 text-xs pb-10 no-print">
+            <p>माझी शेती प्रो डायरी &copy; 2026 | सर्व हक्क सुरक्षित</p>
+        </footer>
+    </div>
+
+    <script type="module" src="./app.js" defer></script>
+</body>
+</html>

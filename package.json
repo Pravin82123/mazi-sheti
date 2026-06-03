@@ -1,0 +1,11 @@
+{
+  "name": "mazi-sheti",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "^3.4.4"
+  },
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./src/style.css -o ./style.css --minify"
+  }
+}
